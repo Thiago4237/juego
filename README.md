@@ -1,2 +1,1 @@
-# juego
-juego usando pygame
+Videojuego en Pygame hecho por amadisima lider y Coqμeto
