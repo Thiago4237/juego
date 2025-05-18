@@ -113,34 +113,7 @@ class Game:
     
     def player_collision(self):
         if pygame.sprite.spritecollide(self.player, self.enemy_sprites, False, pygame.sprite.collide_mask):
-            self.running = False
-            
-    def check_enemy_collisions(self):
-        # Get all enemies from your enemy group
-        enemy_sprites = self.enemy_group.sprites()  # adjust to your actual group name
-        
-        # Check for collisions between player and enemies
-        for enemy in enemy_sprites:
-            # If the player and enemy rectangles collide
-            if self.player.hitbox.colliderect(enemy.hitbox):  # Using hitboxes if you have them
-                # Only damage player if enemy is not in dying state
-                if not enemy.is_dying:
-                    # Call player damage method
-                    self.player.take_damage(enemy.damage)  # Adjust based on your player class
-                    
-                    # Optional: Add knockback effect
-                    knockback_direction = pygame.math.Vector2(
-                        self.player.rect.centerx - enemy.rect.centerx,
-                        self.player.rect.centery - enemy.rect.centery
-                    ).normalize() * 10  # Adjust knockback strength
-                    
-                    self.player.position.x += knockback_direction.x
-                    self.player.position.y += knockback_direction.y
-                    
-                    # Optional: Add invulnerability frames to player
-                    self.player.invulnerable = True
-                    self.player.invulnerable_timer = pygame.time.get_ticks()
-    
+            self.running = False            
     
     def run(self):
         while self.running:
@@ -159,7 +132,6 @@ class Game:
             self.bullet_collision()
             self.player_collision()
             
-            self.check_enemy_collisions()
             
             self.display_surface.fill('black')
             # Dibujar sprites con el offset basado en la posición del jugador
