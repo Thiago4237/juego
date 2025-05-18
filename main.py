@@ -3,6 +3,7 @@ from player import *
 from sprites import *
 from pytmx.util_pygame import load_pygame 
 from groups import AllSprites
+from random import randint, choice
 from battery import Battery
 
 class Game:
@@ -11,30 +12,57 @@ class Game:
         self.display_surface = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         pygame.display.set_caption("Shadowed Forest")
         self.clock = pygame.time.Clock()
-        self.running = True
-        self.load_images()
+        self.running = True        
         
         self.all_sprites = AllSprites()
         self.collision_sprites = pygame.sprite.Group()
         self.bullet_sprites = pygame.sprite.Group()
+        self.enemy_sprites = pygame.sprite.Group()
         self.battery_sprites = pygame.sprite.Group()
+        self.enemy_group = pygame.sprite.Group()
         
         self.light_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.light_surface.fill((10, 10, 20))
-        self.light_surface.set_alpha(230)
+        self.light_surface.set_alpha(230)                
         
-        self.setup()
-        
-        #gun timer
+        #gun timersd
         self.can_shoot = True
         self.shoot_time = 0
         self.gun_cooldown = 100
         
+        #enemy timer
+        self.enemy_event = pygame.event.custom_type()
+        pygame.time.set_timer(self.enemy_event, 300)
+        self.spawn_positions = []
+        
+        #audio
+        self.shoot_sound = pygame.mixer.Sound(join('audio', 'shoot.wav'))
+        self.shoot_sound.set_volume(0.4)
+        self.impact_sound = pygame.mixer.Sound(join('audio', 'impact.ogg'))
+        self.music = pygame.mixer.Sound(join('audio', 'music.wav'))
+        self.music.set_volume(0.3)
+        self.music.play(loops=-1)
+        
+        #setup
+        self.load_images()
+        self.setup()
+        
     def load_images(self):
         self.bullet_surface = pygame.image.load(join('Resources', 'img', 'gun', 'bullet.png')).convert_alpha()
         
+        folders = list(walk(join('Resources', 'img', 'enemies')))[0][1]
+        self.enemy_frames = {}
+        for folder in folders:
+            for folder_path, _, file_names in walk(join('Resources', 'img', 'enemies', folder)):                
+                self.enemy_frames[folder] = []
+                for file_name in sorted(file_names, key=lambda x: int(x.split('.')[0])):                   
+                    full_path = join(folder_path, file_name)
+                    surf = pygame.image.load(full_path).convert_alpha()      
+                    self.enemy_frames[folder].append(surf) 
+        
     def input(self):
         if pygame.mouse.get_pressed()[0] and self.can_shoot:
+            self.shoot_sound.play()
             position = self.gun.rect.center + self.gun.player_direction * 50
             Bullet(self.bullet_surface, position, self.gun.player_direction, (self.all_sprites, self.bullet_sprites))
             self.can_shoot = False
@@ -63,12 +91,56 @@ class Game:
             if obj.name == 'Player':
                 self.player = Player((obj.x, obj.y), self.all_sprites, self.collision_sprites, self.battery_sprites)
                 self.gun = Gun(self.player, self.all_sprites)
+                
+            else:
+                self.spawn_positions.append((obj.x, obj.y))
         
         num_batteries = 7
         for _ in range(num_batteries):
             x = random.randint(0, WINDOW_WIDTH - 20)
             y = random.randint(0, WINDOW_HEIGHT - 20)
             Battery((x, y), (self.all_sprites, self.battery_sprites))
+    
+    def bullet_collision(self):
+        if self.bullet_sprites:
+            for bullet in self.bullet_sprites:
+                collision_sprites = pygame.sprite.spritecollide(bullet, self.enemy_sprites, False, pygame.sprite.collide_mask)
+                if collision_sprites:
+                    self.impact_sound.play()
+                    for sprite in collision_sprites:
+                        sprite.destroy()
+                    bullet.kill()
+    
+    def player_collision(self):
+        if pygame.sprite.spritecollide(self.player, self.enemy_sprites, False, pygame.sprite.collide_mask):
+            self.running = False
+            
+    def check_enemy_collisions(self):
+        # Get all enemies from your enemy group
+        enemy_sprites = self.enemy_group.sprites()  # adjust to your actual group name
+        
+        # Check for collisions between player and enemies
+        for enemy in enemy_sprites:
+            # If the player and enemy rectangles collide
+            if self.player.hitbox.colliderect(enemy.hitbox):  # Using hitboxes if you have them
+                # Only damage player if enemy is not in dying state
+                if not enemy.is_dying:
+                    # Call player damage method
+                    self.player.take_damage(enemy.damage)  # Adjust based on your player class
+                    
+                    # Optional: Add knockback effect
+                    knockback_direction = pygame.math.Vector2(
+                        self.player.rect.centerx - enemy.rect.centerx,
+                        self.player.rect.centery - enemy.rect.centery
+                    ).normalize() * 10  # Adjust knockback strength
+                    
+                    self.player.position.x += knockback_direction.x
+                    self.player.position.y += knockback_direction.y
+                    
+                    # Optional: Add invulnerability frames to player
+                    self.player.invulnerable = True
+                    self.player.invulnerable_timer = pygame.time.get_ticks()
+    
     
     def run(self):
         while self.running:
@@ -77,10 +149,17 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
+                
+                if event.type == self.enemy_event:
+                    Enemy(choice(self.spawn_positions), choice(list(self.enemy_frames.values())), (self.all_sprites, self.enemy_sprites), self.player, self.collision_sprites)
                    
             self.gun_timer() 
             self.input()
             self.all_sprites.update(dt)
+            self.bullet_collision()
+            self.player_collision()
+            
+            self.check_enemy_collisions()
             
             self.display_surface.fill('black')
             # Dibujar sprites con el offset basado en la posición del jugador
