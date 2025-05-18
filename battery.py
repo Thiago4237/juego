@@ -1,11 +1,9 @@
 import pygame
 import os
-from os.path import join
 
 class Battery(pygame.sprite.Sprite):
     def __init__(self, pos, groups):
-        super().__init__(groups)
-        current_dir = os.path.dirname(__file__)
+        super().__init__(groups)   
         self.image = pygame.Surface((20, 20))  # Tamaño inicial del sprite de batería
         self.image.fill((0, 255, 0))  # Color verde temporal
         self.rect = self.image.get_rect(center=pos)
