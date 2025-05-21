@@ -28,6 +28,8 @@ class Player(pygame.sprite.Sprite):
         self.max_light_radius = 150  # Radio máximo de la linterna
         self.light_duration = 30  # Duración máxima de la linterna (segundos)
         self.light_timer = self.light_duration  # Temporizador de la linterna
+        self.max_health = 200  # Salud máxima del jugador
+        self.health = self.max_health  # Salud inicial
     
     def load_images(self):
         """
@@ -127,6 +129,16 @@ class Player(pygame.sprite.Sprite):
         # Detectar colisión con baterías
         for battery in pygame.sprite.spritecollide(self, self.battery_sprites, True):
             self.light_timer = self.light_duration  # Recargar la linterna al máximo
+    
+    def take_damage(self, damage):
+        """
+        Reduce la salud del jugador según el daño recibido.
+        Args:
+            damage (int): Porcentaje de daño a aplicar.
+        """
+        self.health -= damage
+        if self.health < 0:
+            self.health = 0
     
     def update(self, dt):
         """

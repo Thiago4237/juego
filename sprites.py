@@ -105,7 +105,7 @@ class Bullet(pygame.sprite.Sprite):
             self.kill()  # Elimina la bala si ha pasado su vida útil
             
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, position, frames, groups, player, collision_sprites):
+    def __init__(self, position, frames, groups, player, collision_sprites, enemy_type):
         """
         Inicializa un enemigo que persigue al jugador y puede colisionar con obstáculos.
         Args:
@@ -114,9 +114,27 @@ class Enemy(pygame.sprite.Sprite):
             groups (iterable): Grupos de sprites a los que pertenece.
             player (pygame.sprite.Sprite): Referencia al jugador.
             collision_sprites (iterable): Sprites con los que puede colisionar.
+            enemy_type (str): Tipo de enemigo ('ghost', 'bat', 'skeleton').
         """
         super().__init__(groups)
         self.player = player
+        self.enemy_type = enemy_type
+        
+        # Configuración según el tipo de enemigo
+        if enemy_type == 'ghost':
+            self.speed = 250  # Velocidad media
+            self.damage = 10  # 10% de daño
+            self.max_health = 50  # Salud media
+        elif enemy_type == 'bat':
+            self.speed = 350  # Velocidad alta
+            self.damage = 5   # 5% de daño
+            self.max_health = 20  # Salud baja
+        elif enemy_type == 'skeleton':
+            self.speed = 150  # Velocidad baja
+            self.damage = 20  # 20% de daño
+            self.max_health = 100  # Salud alta
+        
+        self.health = self.max_health
         
         # Animación
         self.frames, self.frame_index = frames, 0
@@ -128,11 +146,10 @@ class Enemy(pygame.sprite.Sprite):
         self.hitbox_rect = self.rect.inflate(-20, -40)  # Rectángulo reducido para colisiones
         self.collision_sprites = collision_sprites
         self.direction = pygame.Vector2()  # Dirección de movimiento
-        self.speed = 200  # Velocidad del enemigo
         
         # Temporizador de muerte
         self.death_time = 0
-        self.death_duration = 400  # Tiempo antes de eliminar tras morir
+        self.death_duration = 200  # Tiempo antes de eliminar tras morir
         
     def animate(self, dt):
         """
@@ -176,7 +193,17 @@ class Enemy(pygame.sprite.Sprite):
                 else:
                     if self.direction.y > 0: self.hitbox_rect.bottom = sprite.rect.top  # Colisión abajo
                     if self.direction.y < 0: self.hitbox_rect.top = sprite.rect.bottom    # Colisión arriba
-        
+    
+    def take_damage(self, damage):
+        """
+        Reduce la salud del enemigo y lo destruye si la salud llega a 0.
+        Args:
+            damage (int): Cantidad de daño recibido.
+        """
+        self.health -= damage
+        if self.health <= 0:
+            self.destroy()
+       
     def destroy(self):
         """
         Inicia el proceso de destrucción del enemigo, cambiando su imagen y comenzando el temporizador de muerte.
@@ -189,14 +216,33 @@ class Enemy(pygame.sprite.Sprite):
         surface.set_colorkey('black')
         self.image = surface
         
-        
     def death_timer(self):
         """
         Elimina al enemigo si ha pasado el tiempo de muerte.
         """
         if pygame.time.get_ticks() - self.death_time >= self.death_duration:
             self.kill()  # Elimina el sprite del grupo
-        
+    
+    def draw_health_bar(self, surface, offset):
+        """
+        Dibuja la barra de salud del enemigo encima de su sprite.
+        Args:
+            surface (pygame.Surface): Superficie donde dibujar.
+            offset (pygame.Vector2): Offset de la cámara para alinear la barra.
+        """
+        bar_width = 50
+        bar_height = 5
+        bar_x = self.rect.centerx - bar_width // 2 + offset.x
+        bar_y = self.rect.top - 10 + offset.y
+        health_ratio = self.health / self.max_health
+        fill_width = bar_width * health_ratio
+
+        # Fondo de la barra (gris)
+        pygame.draw.rect(surface, (100, 100, 100), (bar_x, bar_y, bar_width, bar_height))
+        # Barra de salud (rojo si baja, verde si alta)
+        fill_color = (0, 255, 0) if health_ratio > 0.3 else (255, 0, 0)
+        pygame.draw.rect(surface, fill_color, (bar_x, bar_y, fill_width, bar_height))
+    
     def update(self, dt):
         """
         Actualiza el estado del enemigo: movimiento, animación o muerte.

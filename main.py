@@ -59,7 +59,7 @@ class Game:
         self.bullet_surface = pygame.image.load(join('Resources', 'img', 'gun', 'bullet.png')).convert_alpha()
         
         # Cargar los frames de animación de cada tipo de enemigo
-        folders = list(walk(join('Resources', 'img', 'enemies')))[0][1]
+        folders = ['ghost', 'bat', 'skeleton']  # Tipos de enemigos
         self.enemy_frames = {}
         for folder in folders:
             for folder_path, _, file_names in walk(join('Resources', 'img', 'enemies', folder)):
@@ -68,7 +68,7 @@ class Game:
                     full_path = join(folder_path, file_name)
                     surf = pygame.image.load(full_path).convert_alpha()
                     self.enemy_frames[folder].append(surf)
-        
+    
     def input(self):
         """
         Gestiona la entrada del jugador para disparar el arma cuando se presiona el botón izquierdo del mouse y el arma está lista.
@@ -125,73 +125,90 @@ class Game:
     
     def bullet_collision(self):
         """
-        Detecta colisiones entre balas y enemigos. Si hay colisión, destruye al enemigo y elimina la bala.
+        Detecta colisiones entre balas y enemigos. Aplica daño al enemigo y elimina la bala.
         """
         if self.bullet_sprites:
             for bullet in self.bullet_sprites:
-                # Verificar colisión de cada bala con los enemigos
                 collision_sprites = pygame.sprite.spritecollide(bullet, self.enemy_sprites, False, pygame.sprite.collide_mask)
                 if collision_sprites:
-                    self.impact_sound.play()  # Sonido de impacto
+                    self.impact_sound.play()
                     for sprite in collision_sprites:
-                        sprite.destroy()  # Destruir enemigo
-                    bullet.kill()  # Eliminar bala
-    
+                        sprite.take_damage(10)  # Cada bala hace 10 de daño
+                    bullet.kill()
+
     def player_collision(self):
         """
-        Detecta colisiones entre el jugador y los enemigos. Si ocurre, termina el juego.
+        Detecta colisiones entre el jugador y los enemigos. Aplica daño al jugador según el tipo de enemigo.
         """
-        if pygame.sprite.spritecollide(self.player, self.enemy_sprites, False, pygame.sprite.collide_mask):
-            self.running = False  # Fin del juego
+        collision_sprites = pygame.sprite.spritecollide(self.player, self.enemy_sprites, False, pygame.sprite.collide_mask)
+        if collision_sprites:
+            for sprite in collision_sprites:
+                self.player.take_damage(sprite.damage)  # Aplicar daño según el tipo de enemigo
+                if self.player.health <= 0:
+                    self.running = False  # Fin del juego si la salud llega a 0
     
     def run(self):
         """
         Bucle principal del juego. Gestiona eventos, actualizaciones de sprites, colisiones, renderizado y HUD.
         """
         while self.running:
-            dt = self.clock.tick() / 1000  # Delta de tiempo para animaciones y movimientos
+            dt = self.clock.tick() / 1000
             
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    self.running = False  # Salir del juego
-                
+                    self.running = False
                 if event.type == self.enemy_event:
-                    # Crear un nuevo enemigo en una posición aleatoria
-                    Enemy(choice(self.spawn_positions), choice(list(self.enemy_frames.values())), (self.all_sprites, self.enemy_sprites), self.player, self.collision_sprites)
-                   
-            self.gun_timer()  # Actualizar cooldown del arma
-            self.input()  # Procesar entrada del jugador
-            self.all_sprites.update(dt)  # Actualizar todos los sprites
-            self.bullet_collision()  # Verificar colisiones de balas
-            self.player_collision()  # Verificar colisión del jugador
+                    # Crear un nuevo enemigo con un tipo específico
+                    enemy_type = choice(['ghost', 'bat', 'skeleton'])
+                    Enemy(choice(self.spawn_positions), self.enemy_frames[enemy_type], (self.all_sprites, self.enemy_sprites), self.player, self.collision_sprites, enemy_type)
+                    
+            self.gun_timer()
+            self.input()
+            self.all_sprites.update(dt)
+            self.bullet_collision()
+            self.player_collision()
             
-            self.display_surface.fill('black')  # Limpiar pantalla
-            # Dibujar sprites con el offset basado en la posición del jugador
+            self.display_surface.fill('black')
             self.all_sprites.draw(self.player.rect.center)
-            
-            # Simular la linterna y la oscuridad
+
+            # Dibujar la linterna y la oscuridad
             self.light_surface.fill((10, 10, 20))
             light_pos = (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
             pygame.draw.circle(self.light_surface, (255, 255, 255), light_pos, self.player.light_radius)
             self.light_surface.set_colorkey((255, 255, 255))
+            self.light_surface.set_alpha(230)
             self.display_surface.blit(self.light_surface, (0, 0))
             
-            # Dibujar barra de carga de la linterna (HUD, sin offset)
+            # Dibujar barra de salud del jugador
             bar_width = 200
             bar_height = 20
             bar_x = 10
+            bar_y = 40  # Debajo de la barra de la linterna
+            max_health = self.player.max_health
+            current_health = self.player.health
+            health_ratio = current_health / max_health
+            pygame.draw.rect(self.display_surface, (100, 100, 100), (bar_x, bar_y, bar_width, bar_height))
+            fill_color = (0, 255, 0) if health_ratio > 0.3 else (255, 0, 0)
+            fill_width = bar_width * health_ratio
+            pygame.draw.rect(self.display_surface, fill_color, (bar_x, bar_y, fill_width, bar_height))
+            
+            # Dibujar barra de carga de la linterna
             bar_y = 10
             max_charge = 100
             current_charge = self.player.light_charge
-            
-            pygame.draw.rect(self.display_surface, (100, 100, 100), (bar_x, bar_y, bar_width, bar_height))  # Fondo de la barra
-            fill_color = (0, 255, 0) if current_charge > 20 else (255, 0, 0)  # Verde si hay carga, rojo si es baja
+            pygame.draw.rect(self.display_surface, (100, 100, 100), (bar_x, bar_y, bar_width, bar_height))
+            fill_color = (0, 255, 0) if current_charge > 20 else (255, 0, 0)
             fill_width = (current_charge / max_charge) * bar_width
-            pygame.draw.rect(self.display_surface, fill_color, (bar_x, bar_y, fill_width, bar_height))  # Barra de carga
+            pygame.draw.rect(self.display_surface, fill_color, (bar_x, bar_y, fill_width, bar_height))
             
-            pygame.display.update()  # Actualizar pantalla
+            # Dibujar barras de salud de los enemigos
+            for sprite in self.enemy_sprites:
+                if hasattr(sprite, 'draw_health_bar') and sprite.death_time == 0:
+                    sprite.draw_health_bar(self.display_surface, self.all_sprites.offset)
             
-        pygame.quit()  # Salir de pygame
+            pygame.display.update()
+            
+        pygame.quit()
 
 if __name__ == "__main__":
     game = Game()
