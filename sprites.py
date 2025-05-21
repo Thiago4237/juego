@@ -105,7 +105,7 @@ class Bullet(pygame.sprite.Sprite):
             self.kill()  # Elimina la bala si ha pasado su vida útil
             
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, position, frames, groups, player, collision_sprites, enemy_type):
+    def __init__(self, position, frames, groups, player, collision_sprites, enemy_type, game):
         """
         Inicializa un enemigo que persigue al jugador y puede colisionar con obstáculos.
         Args:
@@ -119,6 +119,7 @@ class Enemy(pygame.sprite.Sprite):
         super().__init__(groups)
         self.player = player
         self.enemy_type = enemy_type
+        self.game = game
         
         # Configuración según el tipo de enemigo
         if enemy_type == 'ghost':
@@ -169,7 +170,12 @@ class Enemy(pygame.sprite.Sprite):
         # Calcular dirección hacia el jugador
         player_pos = pygame.Vector2(self.player.rect.center)
         enemy_pos = pygame.Vector2(self.rect.center)
-        self.direction = (player_pos - enemy_pos).normalize()
+        direction_vector = player_pos - enemy_pos
+        
+        if direction_vector.length() > 0:
+            self.direction = direction_vector.normalize()
+        else:
+            self.direction = pygame.Vector2(0, 0)
         
         # Mover en X y comprobar colisión
         self.hitbox_rect.x += self.direction.x * self.speed * dt
@@ -203,11 +209,14 @@ class Enemy(pygame.sprite.Sprite):
         self.health -= damage
         if self.health <= 0:
             self.destroy()
-       
+                
     def destroy(self):
         """
         Inicia el proceso de destrucción del enemigo, cambiando su imagen y comenzando el temporizador de muerte.
         """
+        # Notificar enemigo derrotado
+        self.game.update_score(0, self.enemy_type)
+        
         # Iniciar temporizador de muerte
         self.death_time = pygame.time.get_ticks()
         

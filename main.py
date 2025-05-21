@@ -5,6 +5,9 @@ from pytmx.util_pygame import load_pygame
 from groups import AllSprites
 from random import randint, choice
 from battery import Battery
+from menu import Menu
+import json
+from datetime import datetime
 
 class Game:
     def __init__(self):
@@ -13,7 +16,7 @@ class Game:
         """
         pygame.init()
         self.display_surface = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-        pygame.display.set_caption("Shadowed Forest")
+        pygame.display.set_caption("Y ahora que...")
         self.clock = pygame.time.Clock()
         self.running = True        
         
@@ -48,6 +51,16 @@ class Game:
         self.music.set_volume(0.3)
         self.music.play(loops=-1)
         
+        # Sistema de puntaje
+        self.score = 0  # Puntaje inicial
+        self.start_time = pygame.time.get_ticks()  # Tiempo de inicio
+        self.enemies_defeated = {'ghost': 0, 'bat': 0, 'skeleton': 0}  # Contador de enemigos
+        self.score_file = join('Resources', 'scores.json')  # Archivo para guardar puntajes
+        self.font = pygame.font.Font(None, 36)  # Fuente para mostrar puntaje
+        self.high_scores = self.load_scores()  # Cargar puntajes previos
+        self.player_name = ""  # Nombre del jugador (se pedirá al final)
+        self.name_input_active = False  # Estado para entrada de nombre
+        
         # Cargar imágenes y preparar el escenario
         self.load_images()
         self.setup()
@@ -68,6 +81,69 @@ class Game:
                     full_path = join(folder_path, file_name)
                     surf = pygame.image.load(full_path).convert_alpha()
                     self.enemy_frames[folder].append(surf)
+    
+    def load_scores(self):
+        """Carga los 5 mejores puntajes desde un archivo JSON."""
+        try:
+            with open(self.score_file, 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return []
+    
+    def save_scores(self, player_name, score):
+        """Guarda el puntaje actual en los 5 mejores puntajes en un archivo JSON."""
+        date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        new_score = {'name': player_name, 'score': int(score), 'date': date}
+        self.high_scores.append(new_score)
+        # Ordenar por puntaje (descendente) y mantener solo los 5 mejores
+        self.high_scores = sorted(self.high_scores, key=lambda x: x['score'], reverse=True)[:5]
+        with open(self.score_file, 'w') as f:
+            json.dump(self.high_scores, f, indent=4)
+
+    def update_score(self, dt, enemy_type=None):
+        """Actualiza el puntaje según el tiempo sobrevivido y enemigos derrotados."""
+        # Sumar 10 puntos por segundo sobrevivido
+        self.score += 10 * dt
+        # Sumar puntos por enemigos derrotados
+        if enemy_type:
+            if enemy_type == 'ghost':
+                self.score += 50
+                self.enemies_defeated['ghost'] += 1
+            elif enemy_type == 'bat':
+                self.score += 20
+                self.enemies_defeated['bat'] += 1
+            elif enemy_type == 'skeleton':
+                self.score += 100
+                self.enemies_defeated['skeleton'] += 1
+    
+    def draw_score(self):
+        """Muestra el puntaje actual en la pantalla de juego."""
+        score_text = self.font.render(f"Puntaje: {int(self.score)}", True, (255, 255, 255))
+        self.display_surface.blit(score_text, (10, 70))  # Debajo de las barras de vida y linterna
+
+    def input_name(self):
+        """Maneja la entrada del nombre del jugador al final de la partida."""
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN and self.player_name:
+                    self.save_scores(self.player_name, self.score)
+                    self.name_input_active = False
+                    self.running = False  # Terminar después de guardar
+                elif event.key == pygame.K_BACKSPACE:
+                    self.player_name = self.player_name[:-1]
+                elif len(self.player_name) < 10:  # Límite de 10 caracteres
+                    self.player_name += event.unicode
+
+    def draw_name_input(self):
+        """Muestra la pantalla para ingresar el nombre."""
+        self.display_surface.fill('black')
+        prompt_text = self.font.render("Ingresa tu nombre:", True, (255, 255, 255))
+        name_text = self.font.render(self.player_name, True, (255, 255, 255))
+        self.display_surface.blit(prompt_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 50))
+        self.display_surface.blit(name_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2))
+        pygame.display.update()
     
     def input(self):
         """
@@ -108,14 +184,22 @@ class Game:
         for obj in map.get_layer_by_name('Collisions'):
             CollisionSprite((obj.x, obj.y), pygame.Surface((obj.width, obj.height)), self.collision_sprites)
         
+        player_pos = None
+        
         # Crear jugador y guardar posiciones de spawn de enemigos
         for obj in map.get_layer_by_name('Entities'):
             if obj.name == 'Player':
                 self.player = Player((obj.x, obj.y), self.all_sprites, self.collision_sprites, self.battery_sprites)
                 self.gun = Gun(self.player, self.all_sprites)
+                player_pos = (obj.x, obj.y)
             else:
                 self.spawn_positions.append((obj.x, obj.y))
-        
+                
+        if player_pos:
+            self.spawn_positions = [
+                pos for pos in self.spawn_positions
+                if pygame.math.Vector2(pos).distance_to(pygame.math.Vector2(player_pos)) > 50
+            ]
         # Colocar baterías en posiciones aleatorias
         num_batteries = 7
         for _ in range(num_batteries):
@@ -152,7 +236,13 @@ class Game:
         Bucle principal del juego. Gestiona eventos, actualizaciones de sprites, colisiones, renderizado y HUD.
         """
         while self.running:
+            
             dt = self.clock.tick() / 1000
+            
+            if self.name_input_active:
+                self.input_name()
+                self.draw_name_input()
+                continue
             
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -160,13 +250,14 @@ class Game:
                 if event.type == self.enemy_event:
                     # Crear un nuevo enemigo con un tipo específico
                     enemy_type = choice(['ghost', 'bat', 'skeleton'])
-                    Enemy(choice(self.spawn_positions), self.enemy_frames[enemy_type], (self.all_sprites, self.enemy_sprites), self.player, self.collision_sprites, enemy_type)
+                    Enemy(choice(self.spawn_positions), self.enemy_frames[enemy_type], (self.all_sprites, self.enemy_sprites), self.player, self.collision_sprites, enemy_type, self)
                     
             self.gun_timer()
             self.input()
             self.all_sprites.update(dt)
             self.bullet_collision()
             self.player_collision()
+            self.update_score(dt)
             
             self.display_surface.fill('black')
             self.all_sprites.draw(self.player.rect.center)
@@ -206,10 +297,27 @@ class Game:
                 if hasattr(sprite, 'draw_health_bar') and sprite.death_time == 0:
                     sprite.draw_health_bar(self.display_surface, self.all_sprites.offset)
             
+            # Dibujar puntaje
+            self.draw_score()
+            
+            # Verificar si el juego terminó
+            if self.player.health <= 0:
+                # Verificar si el puntaje califica para los 5 mejores
+                if not self.high_scores or len(self.high_scores) < 5 or self.score > min(self.high_scores, key=lambda x: x['score'])['score']:
+                    self.name_input_active = True
+                else:
+                    self.running = False
+            
             pygame.display.update()
             
         pygame.quit()
 
+# if __name__ == "__main__":
+#     game = Game()
+#     game.run()
+
 if __name__ == "__main__":
     game = Game()
-    game.run()
+    menu = Menu(game)
+    if menu.run():
+        game.run()
