@@ -5,7 +5,7 @@ from settings import *
 from battery import Battery  # Importar la clase Battery
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, position, groups, collision_sprites, battery_sprites):
+    def __init__(self, position, groups, collision_sprites, battery_sprites,  character="veronica"):
         """
         Inicializa el jugador, carga imágenes, define atributos de movimiento, colisión y linterna.
         Args:
@@ -13,11 +13,13 @@ class Player(pygame.sprite.Sprite):
             groups (iterable): Grupos de sprites a los que pertenece.
             collision_sprites (iterable): Sprites con los que puede colisionar.
             battery_sprites (iterable): Sprites de baterías que puede recolectar.
+            character (str): Nombre del personaje seleccionado ("veronica" o "santiago").
         """
         super().__init__(groups)
+        self.character = character
         self.load_images()  # Cargar animaciones
         self.state, self.frame_index = 'down', 0
-        self.image = pygame.image.load(join('Resources', 'img', 'player', 'down', '0.png')).convert_alpha()        
+        self.image = pygame.image.load(join('Resources', 'img', f'player{self.character.capitalize()}', 'down', '0.png')).convert_alpha()        
         self.rect = self.image.get_rect(center=position)
         self.hitbox_rect = self.rect.inflate(-60, -60)  # Rectángulo reducido para colisiones
         self.direction = pygame.Vector2()  # Dirección de movimiento
@@ -37,7 +39,7 @@ class Player(pygame.sprite.Sprite):
         """
         self.frames = {'left': [], 'right': [], 'up': [], 'down': []}
         for state in self.frames.keys():            
-            for folder_path, sub_folders, file_names in walk(join('Resources', 'img', 'player', state)):
+            for folder_path, sub_folders, file_names in walk(join('Resources', 'img', f'player{self.character.capitalize()}', state)):
                 if file_names:
                     for file_name in sorted(file_names, key=lambda x: int(x.split('.')[0])):                   
                         full_path = os.path.join(folder_path, file_name)
