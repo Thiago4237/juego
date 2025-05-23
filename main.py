@@ -326,6 +326,9 @@ class Game:
                                 self.reset_game()
                                 self.game_active = True
                             elif self.pause_options[self.pause_selected_option] == 'Menú Principal':
+                                self.save_scores()  # Guardar puntaje antes de terminar
+                                self.reset_game()   # Resetear el estado del juego
+                                self.running = False  # Terminar el bucle para volver al menú principal
                                 return
                 self.draw_pause_menu()
                 pygame.display.update()
