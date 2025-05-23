@@ -1,56 +1,62 @@
 from settings import *
 from player import *
 from sprites import *
-from pytmx.util_pygame import load_pygame 
+from pytmx.util_pygame import load_pygame
 from groups import AllSprites
 from random import randint, choice
-from battery import Battery
+from drop import Drop
 from menu import Menu
 import json
 from datetime import datetime
+import pygame
+import math
 
 class Game:
     def __init__(self):
-        """
-        Inicializa el juego, configurando la ventana, los temporizadores, el audio y los recursos básicos.
-        """
         pygame.init()
         self.display_surface = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         pygame.display.set_caption("Y ahora que...")
         self.clock = pygame.time.Clock()
-        self.running = True        
+        self.running = True
         self.game_over = False
         self.game_over_time = 0
-        self.game_over_duration = 3000  # 3 segundos para mostrar puntaje final
+        self.game_over_duration = 3000
         self.game_active = False
-        self.paused = False  # Estado para la pausa
+        self.paused = False
         self.pause_selected_option = 0
         self.pause_options = ['Continuar', 'Reiniciar', 'Menú Principal']
         
-        # Grupos de sprites (se inicializan vacíos, se llenan en setup)
         self.all_sprites = AllSprites()
         self.collision_sprites = pygame.sprite.Group()
         self.bullet_sprites = pygame.sprite.Group()
         self.enemy_sprites = pygame.sprite.Group()
-        self.battery_sprites = pygame.sprite.Group()
-        self.enemy_group = pygame.sprite.Group()
+        self.drop_sprites = pygame.sprite.Group()
         
-        # Superficie para simular la oscuridad y la linterna
         self.light_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.light_surface.fill((10, 10, 20))
-        self.light_surface.set_alpha(230)                
+        self.light_surface.set_alpha(230)  # Opacidad de la capa negra (ajustable)
         
-        # Variables para controlar el disparo del arma
+        # Superficie para la niebla
+        self.fog_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+        self.fog_surface.fill((200, 200, 200))  # Gris claro para simular niebla
+        self.fog_base_alpha = 75  # Opacidad base (ajustable)
+        self.fog_alpha_variation = 25  # Variación de opacidad (ajustable)
+        self.fog_alpha_speed = 1.0  # Velocidad de la animación de opacidad
+        self.fog_offset = pygame.Vector2(0, 0)  # Desplazamiento de la niebla
+        self.fog_scroll_speed = pygame.Vector2(20, -10)  # Velocidad de desplazamiento
+        self.fog_active = True  # Estado inicial de la niebla
+        self.fog_active_duration = 5.0  # Duración activa (segundos)
+        self.fog_inactive_duration = 3.0  # Duración inactiva (segundos)
+        self.fog_timer = 0.0  # Temporizador para alternar estados
+        
         self.can_shoot = True
         self.shoot_time = 0
         self.gun_cooldown = 100
         
-        # Temporizador para aparición de enemigos
         self.enemy_event = pygame.event.custom_type()
-        pygame.time.set_timer(self.enemy_event, 300)
+        pygame.time.set_timer(self.enemy_event, 500)
         self.spawn_positions = []
         
-        # Cargar sonidos y música
         self.shoot_sound = pygame.mixer.Sound(join('audio', 'shoot.wav'))
         self.shoot_sound.set_volume(0.4)
         self.impact_sound = pygame.mixer.Sound(join('audio', 'impact.ogg'))
@@ -58,17 +64,20 @@ class Game:
         self.music.set_volume(0.3)
         self.music.play(loops=-1)
         
-        # Sistema de puntaje
         self.score = 0
         self.start_time = pygame.time.get_ticks()
+        self.difficulty_timer = 0
+        self.difficulty_interval = 180
+        self.difficulty_level = 0
         self.enemies_defeated = {'ghost': 0, 'bat': 0, 'skeleton': 0}
+        self.enemies_active = {'ghost': 0, 'bat': 0, 'skeleton': 0}
+        self.max_enemies_per_type = 5
         self.score_file = join('Resources', 'scores.json')
         self.font = pygame.font.Font(None, 36)
         self.game_over_font = pygame.font.Font(None, 72)
         self.high_scores = self.load_scores()
-        self.player_name = ""  # Se establecerá desde el menú
-
-        # Cargar imágenes (sin inicializar el escenario aún)
+        self.player_name = ""
+        
         self.load_images()
         
     def load_images(self):
@@ -91,7 +100,7 @@ class Game:
             return []
 
     def save_scores(self):
-        if self.player_name:  # Solo guardar si hay un nombre válido
+        if self.player_name:
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             new_score = {'name': self.player_name, 'score': int(self.score), 'date': date}
             self.high_scores.append(new_score)
@@ -102,19 +111,31 @@ class Game:
     def update_score(self, dt, enemy_type=None):
         self.score += 10 * dt
         if enemy_type:
-            if enemy_type == 'ghost':
+            if enemy_type == 'ghost' and self.enemies_active['ghost'] > 0:
                 self.score += 50
                 self.enemies_defeated['ghost'] += 1
-            elif enemy_type == 'bat':
+                self.enemies_active['ghost'] -= 1
+            elif enemy_type == 'bat' and self.enemies_active['bat'] > 0:
                 self.score += 20
                 self.enemies_defeated['bat'] += 1
-            elif enemy_type == 'skeleton':
+                self.enemies_active['bat'] -= 1
+            elif enemy_type == 'skeleton' and self.enemies_active['skeleton'] > 0:
                 self.score += 100
                 self.enemies_defeated['skeleton'] += 1
+                self.enemies_active['skeleton'] -= 1
 
     def draw_score(self):
         score_text = self.font.render(f"Puntaje: {int(self.score)}", True, (255, 255, 255))
         self.display_surface.blit(score_text, (10, 70))
+        # Depuración: Mostrar número de enemigos activos y total
+        total_enemies = sum(self.enemies_active.values())
+        debug_text = self.font.render(
+            f"Enemigos activos: G={self.enemies_active['ghost']} "
+            f"B={self.enemies_active['bat']} S={self.enemies_active['skeleton']} "
+            f"Total={total_enemies}",
+            True, (255, 255, 255)
+        )
+        self.display_surface.blit(debug_text, (10, 100))
 
     def draw_game_over(self):
         self.display_surface.fill('black')
@@ -145,29 +166,40 @@ class Game:
             current_time = pygame.time.get_ticks()
             if current_time - self.shoot_time >= self.gun_cooldown:
                 self.can_shoot = True
-        
+
+    def update_difficulty(self, dt):
+        self.difficulty_timer += dt
+        if self.difficulty_timer >= self.difficulty_interval:
+            self.difficulty_level += 1
+            self.difficulty_timer = 0
+
+    def get_drop_probability(self):
+        base_probability = 0.6
+        reduction = 0.1 * self.difficulty_level
+        return max(0.1, base_probability - reduction)
+
     def reset_game(self):
-        """
-        Reinicia los valores críticos del juego para una nueva partida.
-        """
         self.score = 0
         self.start_time = pygame.time.get_ticks()
+        self.difficulty_timer = 0
+        self.difficulty_level = 0
         self.enemies_defeated = {'ghost': 0, 'bat': 0, 'skeleton': 0}
+        self.enemies_active = {'ghost': 0, 'bat': 0, 'skeleton': 0}
         self.game_over = False
         self.game_over_time = 0
         self.game_active = False
         self.paused = False
         self.pause_selected_option = 0
+        self.fog_offset = pygame.Vector2(0, 0)
+        self.fog_active = True
+        self.fog_timer = 0.0
         
-        # Vaciar grupos de sprites para evitar persistencia
         self.all_sprites.empty()
         self.collision_sprites.empty()
         self.bullet_sprites.empty()
         self.enemy_sprites.empty()
-        self.battery_sprites.empty()
-        self.enemy_group.empty()
+        self.drop_sprites.empty()
         
-        # Reconfigurar el escenario y el jugador
         self.setup()
 
     def setup(self):
@@ -182,7 +214,7 @@ class Game:
         player_pos = None
         for obj in map.get_layer_by_name('Entities'):
             if obj.name == 'Player':
-                self.player = Player((obj.x, obj.y), self.all_sprites, self.collision_sprites, self.battery_sprites)
+                self.player = Player((obj.x, obj.y), self.all_sprites, self.collision_sprites, self.drop_sprites)
                 self.gun = Gun(self.player, self.all_sprites)
                 player_pos = (obj.x, obj.y)
             else:
@@ -192,12 +224,7 @@ class Game:
                 pos for pos in self.spawn_positions
                 if pygame.math.Vector2(pos).distance_to(pygame.math.Vector2(player_pos)) > 50
             ]
-        num_batteries = 7
-        for _ in range(num_batteries):
-            x = random.randint(0, WINDOW_WIDTH - 20)
-            y = random.randint(0, WINDOW_HEIGHT - 20)
-            Battery((x, y), (self.all_sprites, self.battery_sprites))
-    
+
     def bullet_collision(self):
         if self.bullet_sprites:
             for bullet in self.bullet_sprites:
@@ -218,9 +245,64 @@ class Game:
                     self.game_over_time = pygame.time.get_ticks()
                     self.save_scores()
 
+    def spawn_enemies(self, enemy_type, base_pos):
+        if enemy_type == 'bat':
+            num_bats = randint(2, 4)
+            bats_to_spawn = min(num_bats, self.max_enemies_per_type - self.enemies_active['bat'])
+            for _ in range(bats_to_spawn):
+                offset_x = randint(-50, 50)
+                offset_y = randint(-50, 50)
+                spawn_pos = (base_pos[0] + offset_x, base_pos[1] + offset_y)
+                spawn_pos = (
+                    max(0, min(spawn_pos[0], WINDOW_WIDTH)),
+                    max(0, min(spawn_pos[1], WINDOW_HEIGHT))
+                )
+                Enemy(spawn_pos, self.enemy_frames[enemy_type], 
+                      (self.all_sprites, self.enemy_sprites), self.player, self.collision_sprites, 
+                      enemy_type, self, self.drop_sprites)
+                self.enemies_active['bat'] += 1
+        else:
+            if self.enemies_active[enemy_type] < self.max_enemies_per_type:
+                Enemy(base_pos, self.enemy_frames[enemy_type], 
+                      (self.all_sprites, self.enemy_sprites), self.player, self.collision_sprites, 
+                      enemy_type, self, self.drop_sprites)
+                self.enemies_active[enemy_type] += 1
+
+    def update_fog(self, dt):
+        # Actualizar temporizador de niebla
+        self.fog_timer += dt
+        if self.fog_active:
+            if self.fog_timer >= self.fog_active_duration:
+                self.fog_active = False
+                self.fog_timer = 0.0
+        else:
+            if self.fog_timer >= self.fog_inactive_duration:
+                self.fog_active = True
+                self.fog_timer = 0.0
+        
+        # Actualizar desplazamiento de la niebla
+        self.fog_offset += self.fog_scroll_speed * dt
+        self.fog_offset.x %= WINDOW_WIDTH
+        self.fog_offset.y %= WINDOW_HEIGHT
+        
+        # Actualizar opacidad
+        if self.fog_active:
+            fog_alpha = self.fog_base_alpha + self.fog_alpha_variation * math.sin(
+                pygame.time.get_ticks() / 1000.0 * self.fog_alpha_speed
+            )
+            self.fog_surface.set_alpha(int(fog_alpha))
+        else:
+            self.fog_surface.set_alpha(0)  # Niebla invisible
+
+    def draw_fog(self):
+        self.display_surface.blit(self.fog_surface, (self.fog_offset.x, self.fog_offset.y))
+        self.display_surface.blit(self.fog_surface, (self.fog_offset.x - WINDOW_WIDTH, self.fog_offset.y))
+        self.display_surface.blit(self.fog_surface, (self.fog_offset.x, self.fog_offset.y - WINDOW_HEIGHT))
+        self.display_surface.blit(self.fog_surface, (self.fog_offset.x - WINDOW_WIDTH, self.fog_offset.y - WINDOW_HEIGHT))
+
     def run(self):
-        self.reset_game()  # Reiniciar valores y configurar el escenario
-        self.game_active = True  # Activar el juego después de ingresar el nombre
+        self.reset_game()
+        self.game_active = True
         while self.running:
             dt = self.clock.tick() / 1000
             
@@ -244,7 +326,7 @@ class Game:
                                 self.reset_game()
                                 self.game_active = True
                             elif self.pause_options[self.pause_selected_option] == 'Menú Principal':
-                                return  # Volver al menú principal
+                                return
                 self.draw_pause_menu()
                 pygame.display.update()
                 continue
@@ -253,7 +335,7 @@ class Game:
                 self.game_active = False
                 self.draw_game_over()
                 if pygame.time.get_ticks() - self.game_over_time >= self.game_over_duration:
-                    return  # Volver al menú
+                    return
                 continue
 
             for event in pygame.event.get():
@@ -265,19 +347,22 @@ class Game:
                         self.game_active = False
                 if event.type == self.enemy_event and self.game_active:
                     enemy_type = choice(['ghost', 'bat', 'skeleton'])
-                    Enemy(choice(self.spawn_positions), self.enemy_frames[enemy_type], 
-                          (self.all_sprites, self.enemy_sprites), self.player, self.collision_sprites, enemy_type, self)
+                    self.spawn_enemies(enemy_type, choice(self.spawn_positions))
                     
             if self.game_active:
                 self.gun_timer()
                 self.input()
+                self.update_difficulty(dt)
+                self.update_fog(dt)
                 self.all_sprites.update(dt)
+                self.drop_sprites.update(dt)
                 self.bullet_collision()
                 self.player_collision()
                 self.update_score(dt)
             
             self.display_surface.fill('black')
             self.all_sprites.draw(self.player.rect.center)
+            self.draw_fog()
             self.light_surface.fill((10, 10, 20))
             light_pos = (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
             pygame.draw.circle(self.light_surface, (255, 255, 200), light_pos, self.player.light_radius)

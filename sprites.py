@@ -1,266 +1,165 @@
 from settings import *
 from math import atan2, degrees
+import pygame
+import random
+from drop import Drop
 
 class Sprite(pygame.sprite.Sprite):
     def __init__(self, position, surface, groups):
-        """
-        Inicializa un sprite básico con una imagen y posición.
-        Args:
-            position (tuple): Posición inicial del sprite.
-            surface (pygame.Surface): Imagen del sprite.
-            groups (iterable): Grupos de sprites a los que pertenece.
-        """
         super().__init__(groups)
         self.image = surface
         self.rect = self.image.get_rect(topleft=position)
-        self.ground = True  # Indica si el sprite está en el suelo
+        self.ground = True
 
 class CollisionSprite(pygame.sprite.Sprite):
     def __init__(self, position, surface, groups):
-        """
-        Inicializa un sprite de colisión con una imagen y posición.
-        Args:
-            position (tuple): Posición inicial del sprite.
-            surface (pygame.Surface): Imagen del sprite.
-            groups (iterable): Grupos de sprites a los que pertenece.
-        """
         super().__init__(groups)
         self.image = surface
         self.rect = self.image.get_rect(topleft=position)
-        
+
 class Gun(pygame.sprite.Sprite):
     def __init__(self, player, groups):
-        """
-        Inicializa el arma del jugador.
-        Args:
-            player (pygame.sprite.Sprite): Referencia al jugador.
-            groups (iterable): Grupos de sprites a los que pertenece.
-        """
-        # Conexión con el jugador
         self.player = player
-        self.distance = 140  # Distancia del arma respecto al jugador
-        self.player_direction = pygame.Vector2(0, 1)  # Dirección inicial
-        
-        # Configuración del sprite del arma
+        self.distance = 140
+        self.player_direction = pygame.Vector2(0, 1)
         super().__init__(groups)
         self.gun_surface = pygame.image.load(join('Resources', 'img', 'gun', 'gun.png')).convert_alpha()
         self.image = self.gun_surface
-        self.rect = self.image.get_rect(center = self.player.rect.center + self.player_direction * self.distance)
+        self.rect = self.image.get_rect(center=self.player.rect.center + self.player_direction * self.distance)
         
     def get_direction(self):
-        """
-        Calcula la dirección del arma en función de la posición del mouse respecto al centro de la pantalla.
-        """
-        mouse_pos = pygame.Vector2(pygame.mouse.get_pos())  # Posición del mouse
-        player_pos= pygame.Vector2(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)  # Centro de la pantalla
-        self.player_direction = (mouse_pos - player_pos).normalize()  # Vector dirección
+        mouse_pos = pygame.Vector2(pygame.mouse.get_pos())
+        player_pos = pygame.Vector2(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
+        self.player_direction = (mouse_pos - player_pos).normalize()
         
     def rotate_gun(self):
-        """
-        Rota la imagen del arma para que apunte hacia la dirección calculada.
-        """
-        angle = degrees(atan2(self.player_direction.x, self.player_direction.y)) - 90  # Ángulo de rotación
+        angle = degrees(atan2(self.player_direction.x, self.player_direction.y)) - 90
         if self.player_direction.x > 0:
             self.image = pygame.transform.rotozoom(self.gun_surface, angle, 1)
         else:
             self.image = pygame.transform.rotozoom(self.gun_surface, abs(angle), 1)
-            self.image = pygame.transform.flip(self.image, False, True)  # Voltea el arma si apunta a la izquierda
+            self.image = pygame.transform.flip(self.image, False, True)
         
     def update(self, _):
-        """
-        Actualiza la dirección, rotación y posición del arma en cada frame.
-        """
-        self.get_direction()  # Actualiza la dirección
-        self.rotate_gun()    # Rota el sprite
-        self.rect.center = self.player.rect.center + self.player_direction * self.distance  # Posiciona el arma
-    
+        self.get_direction()
+        self.rotate_gun()
+        self.rect.center = self.player.rect.center + self.player_direction * self.distance
+
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, surface, position, direction, groups):
-        """
-        Inicializa una bala disparada por el arma.
-        Args:
-            surface (pygame.Surface): Imagen de la bala.
-            position (tuple): Posición inicial de la bala.
-            direction (pygame.Vector2): Dirección de movimiento.
-            groups (iterable): Grupos de sprites a los que pertenece.
-        """
         super().__init__(groups)
         self.image = surface
         self.rect = self.image.get_rect(center=position)
-        self.spawn_time = pygame.time.get_ticks()  # Tiempo de creación
-        self.lifetime = 1000  # Vida útil de la bala en milisegundos
-        
-        self.direction = direction  # Dirección de movimiento
-        self.speed = 1200  # Velocidad de la bala
+        self.spawn_time = pygame.time.get_ticks()
+        self.lifetime = 1000
+        self.direction = direction
+        self.speed = 1200
         
     def update(self, dt):
-        """
-        Actualiza la posición de la bala y la elimina si ha pasado su tiempo de vida.
-        Args:
-            dt (float): Delta de tiempo desde el último frame.
-        """
-        self.rect.center += self.direction * self.speed * dt  # Mueve la bala
-        
+        self.rect.center += self.direction * self.speed * dt
         if pygame.time.get_ticks() - self.spawn_time > self.lifetime:
-            self.kill()  # Elimina la bala si ha pasado su vida útil
-            
+            self.kill()
+
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, position, frames, groups, player, collision_sprites, enemy_type, game):
-        """
-        Inicializa un enemigo que persigue al jugador y puede colisionar con obstáculos.
-        Args:
-            position (tuple): Posición inicial del enemigo.
-            frames (list): Lista de imágenes para la animación.
-            groups (iterable): Grupos de sprites a los que pertenece.
-            player (pygame.sprite.Sprite): Referencia al jugador.
-            collision_sprites (iterable): Sprites con los que puede colisionar.
-            enemy_type (str): Tipo de enemigo ('ghost', 'bat', 'skeleton').
-        """
+    def __init__(self, position, frames, groups, player, collision_sprites, enemy_type, game, drop_sprites):
         super().__init__(groups)
         self.player = player
         self.enemy_type = enemy_type
         self.game = game
+        self.drop_sprites = drop_sprites
         
-        # Configuración según el tipo de enemigo
         if enemy_type == 'ghost':
-            self.speed = 250  # Velocidad media
-            self.damage = 10  # 10% de daño
-            self.max_health = 50  # Salud media
+            self.base_speed = 250
+            self.base_damage = 0
+            self.max_health = 50
         elif enemy_type == 'bat':
-            self.speed = 350  # Velocidad alta
-            self.damage = 5   # 5% de daño
-            self.max_health = 20  # Salud baja
+            self.base_speed = 350
+            self.base_damage = 0
+            self.max_health = 20
         elif enemy_type == 'skeleton':
-            self.speed = 150  # Velocidad baja
-            self.damage = 20  # 20% de daño
-            self.max_health = 100  # Salud alta
+            self.base_speed = 150
+            self.base_damage = 0
+            self.max_health = 100
         
+        self.speed = self.base_speed * (1 + 0.1 * game.difficulty_level)
+        self.damage = self.base_damage * (1 + 0.05 * game.difficulty_level)
         self.health = self.max_health
         
-        # Animación
         self.frames, self.frame_index = frames, 0
         self.image = self.frames[self.frame_index]
-        self.animate_speed = 6  # Velocidad de animación
-        
-        # Rectángulos para colisión y posición
+        self.animate_speed = 6
         self.rect = self.image.get_rect(center=position)
-        self.hitbox_rect = self.rect.inflate(-20, -40)  # Rectángulo reducido para colisiones
+        self.hitbox_rect = self.rect.inflate(-20, -40)
         self.collision_sprites = collision_sprites
-        self.direction = pygame.Vector2()  # Dirección de movimiento
-        
-        # Temporizador de muerte
+        self.direction = pygame.Vector2()
         self.death_time = 0
-        self.death_duration = 200  # Tiempo antes de eliminar tras morir
+        self.death_duration = 200
         
     def animate(self, dt):
-        """
-        Actualiza el frame de animación del enemigo según el tiempo transcurrido.
-        Args:
-            dt (float): Delta de tiempo desde el último frame.
-        """
-        self.frame_index += self.animate_speed * dt  # Avanza el índice de animación
-        self.image = self.frames[int(self.frame_index) % len(self.frames)]  # Cambia la imagen
+        self.frame_index += self.animate_speed * dt
+        self.image = self.frames[int(self.frame_index) % len(self.frames)]
         
     def move(self, dt):
-        """
-        Mueve al enemigo hacia el jugador, gestionando colisiones.
-        Args:
-            dt (float): Delta de tiempo desde el último frame.
-        """
-        # Calcular dirección hacia el jugador
         player_pos = pygame.Vector2(self.player.rect.center)
         enemy_pos = pygame.Vector2(self.rect.center)
         direction_vector = player_pos - enemy_pos
-        
         if direction_vector.length() > 0:
             self.direction = direction_vector.normalize()
         else:
             self.direction = pygame.Vector2(0, 0)
-        
-        # Mover en X y comprobar colisión
         self.hitbox_rect.x += self.direction.x * self.speed * dt
         self.collision('horizontal')
-        # Mover en Y y comprobar colisión
         self.hitbox_rect.y += self.direction.y * self.speed * dt
         self.collision('vertical')
-        self.rect.center = self.hitbox_rect.center  # Actualizar posición visual
+        self.rect.center = self.hitbox_rect.center
         
     def collision(self, direction):
-        """
-        Gestiona la colisión del enemigo con los sprites de colisión.
-        Args:
-            direction (str): 'horizontal' o 'vertical' para indicar el eje de colisión.
-        """
-        for sprite in self.collision_sprites:
-            if sprite.rect.colliderect(self.hitbox_rect):
-                if direction == 'horizontal':
-                    if self.direction.x > 0: self.hitbox_rect.right = sprite.rect.left  # Colisión derecha
-                    if self.direction.x < 0: self.hitbox_rect.left = sprite.rect.right  # Colisión izquierda
-                else:
-                    if self.direction.y > 0: self.hitbox_rect.bottom = sprite.rect.top  # Colisión abajo
-                    if self.direction.y < 0: self.hitbox_rect.top = sprite.rect.bottom    # Colisión arriba
+        if self.enemy_type != 'ghost':
+            for sprite in self.collision_sprites:
+                if sprite.rect.colliderect(self.hitbox_rect):
+                    if direction == 'horizontal':
+                        if self.direction.x > 0: self.hitbox_rect.right = sprite.rect.left
+                        if self.direction.x < 0: self.hitbox_rect.left = sprite.rect.right
+                    else:
+                        if self.direction.y > 0: self.hitbox_rect.bottom = sprite.rect.top
+                        if self.direction.y < 0: self.hitbox_rect.top = sprite.rect.bottom
     
     def take_damage(self, damage):
-        """
-        Reduce la salud del enemigo y lo destruye si la salud llega a 0.
-        Args:
-            damage (int): Cantidad de daño recibido.
-        """
-        self.health -= damage
-        if self.health <= 0:
-            self.destroy()
+        if self.death_time == 0:  # Solo recibir daño si no está en estado de muerte
+            self.health -= damage
+            if self.health <= 0:
+                self.destroy()
                 
     def destroy(self):
-        """
-        Inicia el proceso de destrucción del enemigo, cambiando su imagen y comenzando el temporizador de muerte.
-        """
-        # Notificar enemigo derrotado
         self.game.update_score(0, self.enemy_type)
-        
-        # Iniciar temporizador de muerte
         self.death_time = pygame.time.get_ticks()
-        
-        # Cambiar la imagen a una silueta blanca
         surface = pygame.mask.from_surface(self.frames[0]).to_surface()
         surface.set_colorkey('black')
         self.image = surface
         
+        drop_probability = self.game.get_drop_probability()
+        if random.random() < drop_probability:
+            drop_type = random.choices(['health', 'battery'], weights=[0.5, 0.5])[0]
+            Drop(self.rect.center, (self.game.all_sprites, self.drop_sprites), drop_type)
+        
     def death_timer(self):
-        """
-        Elimina al enemigo si ha pasado el tiempo de muerte.
-        """
         if pygame.time.get_ticks() - self.death_time >= self.death_duration:
-            self.kill()  # Elimina el sprite del grupo
+            self.kill()
     
     def draw_health_bar(self, surface, offset):
-        """
-        Dibuja la barra de salud del enemigo encima de su sprite.
-        Args:
-            surface (pygame.Surface): Superficie donde dibujar.
-            offset (pygame.Vector2): Offset de la cámara para alinear la barra.
-        """
         bar_width = 50
         bar_height = 5
         bar_x = self.rect.centerx - bar_width // 2 + offset.x
         bar_y = self.rect.top - 10 + offset.y
         health_ratio = self.health / self.max_health
         fill_width = bar_width * health_ratio
-
-        # Fondo de la barra (gris)
         pygame.draw.rect(surface, (100, 100, 100), (bar_x, bar_y, bar_width, bar_height))
-        # Barra de salud (rojo si baja, verde si alta)
         fill_color = (0, 255, 0) if health_ratio > 0.3 else (255, 0, 0)
         pygame.draw.rect(surface, fill_color, (bar_x, bar_y, fill_width, bar_height))
     
     def update(self, dt):
-        """
-        Actualiza el estado del enemigo: movimiento, animación o muerte.
-        Args:
-            dt (float): Delta de tiempo desde el último frame.
-        """
         if self.death_time == 0:
-            self.move(dt)  # Si está vivo, se mueve y anima
+            self.move(dt)
             self.animate(dt)
         else:
-            self.death_timer()  # Si está muriendo, espera para eliminarse
-         
+            self.death_timer()
