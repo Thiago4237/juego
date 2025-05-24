@@ -15,12 +15,26 @@ class Menu:
         self.character_selection_active = False
         self.characters = ['veronica', 'santiago']  
         self.selected_character = 0
+        
+        self.show_splash = True
+        self.splash_timer = 0
+        self.splash_duration = 2000  
+
+        self.fading_out = False
+        self.fade_timer = 0
+        self.fade_duration = 1000  
+        self.splash_alpha = 255  
                 
         self.char_selection_bg = pygame.image.load(join('Resources', 'img', 'Personaje.png')).convert_alpha()
         self.char_selection_bg = pygame.transform.scale(self.char_selection_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
               
         self.menu_bg = pygame.image.load(join('Resources', 'img', 'Menu.png')).convert_alpha()
         self.menu_bg = pygame.transform.scale(self.menu_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
+                
+        self.splash_bg = pygame.image.load(join('Resources', 'img', 'PreMenu.png')).convert_alpha()
+        self.splash_bg = pygame.transform.scale(self.splash_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
+        # Create a surface for the splash with per-pixel alpha
+        self.splash_surface = self.splash_bg.copy()
                 
         self.option_areas = [
             pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 170 - 25, 200, 40),  # Jugar
@@ -37,7 +51,6 @@ class Menu:
     def draw_menu(self):
         self.display_surface.blit(self.menu_bg, (0, 0))
         
-        # Modified: Draw a yellow triangle pointing left towards the option
         selected_rect = self.option_areas[self.selected_option]
         triangle_size = 15
         triangle_points = [
@@ -46,6 +59,13 @@ class Menu:
             (selected_rect.left - 45, selected_rect.centery + triangle_size)     
         ]
         pygame.draw.polygon(self.display_surface, (255, 255, 0), triangle_points)
+
+    def draw_splash(self):
+        
+        self.display_surface.blit(self.menu_bg, (0, 0))
+        
+        self.splash_surface.set_alpha(int(self.splash_alpha))
+        self.display_surface.blit(self.splash_surface, (0, 0))
 
     def draw_scores(self):
         self.display_surface.fill('black')
@@ -87,7 +107,6 @@ class Menu:
         self.display_surface.blit(instruction_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 50))
         
     def draw_character_selection(self):
-        
         self.display_surface.blit(self.char_selection_bg, (0, 0))
         
         triangle_size = 20
@@ -145,16 +164,50 @@ class Menu:
         self.input_name_active = False
         self.character_selection_active = False
         self.player_name = ""
-        if not start_with_main_menu:
+        if start_with_main_menu:
+            self.show_splash = True
+            self.splash_timer = pygame.time.get_ticks()
+            self.splash_alpha = 255  
+        else:
+            self.show_splash = False
+            self.fading_out = False
             self.input_name_active = True
+
         while True:
+            
+            if self.show_splash:
+                current_time = pygame.time.get_ticks()
+                elapsed_time = current_time - self.splash_timer
+
+                if not self.fading_out:
+                    
+                    if elapsed_time >= self.splash_duration:
+                        self.fading_out = True
+                        self.fade_timer = pygame.time.get_ticks()
+                    self.draw_splash()
+                else:
+                    
+                    fade_elapsed = current_time - self.fade_timer
+                    if fade_elapsed < self.fade_duration:
+                        
+                        self.splash_alpha = 255 * (1 - fade_elapsed / self.fade_duration)
+                        self.draw_splash()
+                    else:
+                        
+                        self.show_splash = False
+                        self.fading_out = False
+                        self.splash_alpha = 255  
+
+                pygame.display.update()
+                continue
+
             if self.input_name_active:
                 result = self.handle_input_name()
                 if result is not None:
                     if result:
-                        return True  # Iniciar juego
+                        return True
                     else:
-                        return False  # Salir
+                        return False
                 self.draw_name_input()
             elif self.character_selection_active:
                 result = self.handle_character_selection()
@@ -193,7 +246,6 @@ class Menu:
                         if event.key == pygame.K_DOWN or event.key == pygame.K_s:
                             self.selected_option = (self.selected_option + 1) % len(self.options)
                         if event.key == pygame.K_RETURN:
-                            # Logic to handle the selected option based on the image areas
                             if self.options[self.selected_option] == 'Jugar':
                                 self.input_name_active = True
                             elif self.options[self.selected_option] == 'Puntajes':
