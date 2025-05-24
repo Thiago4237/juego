@@ -69,20 +69,25 @@ class Enemy(pygame.sprite.Sprite):
         self.drop_sprites = drop_sprites
         
         if enemy_type == 'ghost':
-            self.base_speed = 250
-            self.base_damage = 0
+            self.base_speed = 200
+            self.base_damage_percent = 0.05  # 10% de max_health
+            self.max_damage_percent = 0.35   # Máximo 40%
             self.max_health = 50
         elif enemy_type == 'bat':
-            self.base_speed = 350
-            self.base_damage = 0
+            self.base_speed = 300
+            self.base_damage_percent = 0.03  # 5% de max_health
+            self.max_damage_percent = 0.38   # Máximo 45%
             self.max_health = 20
         elif enemy_type == 'skeleton':
-            self.base_speed = 150
-            self.base_damage = 0
+            self.base_speed = 160
+            self.base_damage_percent = 0.10  # 20% de max_health
+            self.max_damage_percent = 0.42   # Máximo 50%
             self.max_health = 100
         
         self.speed = self.base_speed * (1 + 0.1 * game.difficulty_level)
-        self.damage = self.base_damage * (1 + 0.05 * game.difficulty_level)
+        damage_percent = self.base_damage_percent * (1 + 0.05 * game.difficulty_level)
+        damage_percent = min(damage_percent, self.max_damage_percent)
+        self.damage = damage_percent * player.max_health
         self.health = self.max_health
         
         self.frames, self.frame_index = frames, 0
@@ -125,7 +130,7 @@ class Enemy(pygame.sprite.Sprite):
                         if self.direction.y < 0: self.hitbox_rect.top = sprite.rect.bottom
     
     def take_damage(self, damage):
-        if self.death_time == 0:  # Solo recibir daño si no está en estado de muerte
+        if self.death_time == 0:
             self.health -= damage
             if self.health <= 0:
                 self.destroy()

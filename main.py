@@ -61,7 +61,6 @@ class Game:
             self.shoot_sound = pygame.mixer.Sound(join('audio', 'shoot.wav'))
             self.shoot_sound.set_volume(0.2)
             self.impact_sound = pygame.mixer.Sound(join('audio', 'impact.ogg'))
-            # Cargar música usando pygame.mixer.music
             pygame.mixer.music.load(join('audio', 'principal.mp3'))
             pygame.mixer.music.set_volume(1)
         except pygame.error as e:
@@ -207,9 +206,9 @@ class Game:
             self.difficulty_timer = 0
 
     def get_drop_probability(self):
-        base_probability = 0.6
-        reduction = 0.1 * self.difficulty_level
-        return max(0.1, base_probability - reduction)
+        base_probability = 0.7  # 70% inicial
+        reduction = 0.05 * self.difficulty_level  # Reducir 5% por nivel
+        return max(0.1, base_probability - reduction)  # Mínimo 10%
 
     def reset_game(self):
         self.score = 0
@@ -233,9 +232,9 @@ class Game:
         self.enemy_sprites.empty()
         self.drop_sprites.empty()
         
-        self.stop_music()  # Detener música antes de reiniciar
+        self.stop_music()
         self.setup()
-        self.play_music()  # Iniciar música después de configurar el juego
+        self.play_music()
 
     def setup(self):
         current_dir = os.path.dirname(__file__)
@@ -332,14 +331,14 @@ class Game:
         self.display_surface.blit(self.fog_surface, (self.fog_offset.x - WINDOW_WIDTH, self.fog_offset.y - WINDOW_HEIGHT))
 
     def run(self):
-        self.stop_music()  # Asegurar que la música esté detenida antes de iniciar
+        self.stop_music()
         self.reset_game()
         self.game_active = True
         while self.running:
             dt = self.clock.tick() / 1000
             
             if self.paused:
-                self.pause_music()  # Pausar música al entrar en pausa
+                self.pause_music()
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         self.running = False
@@ -348,7 +347,7 @@ class Game:
                         if event.key == pygame.K_ESCAPE:
                             self.paused = False
                             self.game_active = True
-                            self.unpause_music()  # Reanudar música al continuar
+                            self.unpause_music()
                         elif event.key == pygame.K_UP:
                             self.pause_selected_option = (self.pause_selected_option - 1) % len(self.pause_options)
                         elif event.key == pygame.K_DOWN:
@@ -357,14 +356,13 @@ class Game:
                             if self.pause_options[self.pause_selected_option] == 'Continuar':
                                 self.paused = False
                                 self.game_active = True
-                                self.unpause_music()  # Reanudar música al continuar
+                                self.unpause_music()
                             elif self.pause_options[self.pause_selected_option] == 'Reiniciar':
                                 self.reset_game()
                                 self.game_active = True
-                                # Música manejada en reset_game
                             elif self.pause_options[self.pause_selected_option] == 'Menú Principal':
                                 self.save_scores()
-                                self.stop_music()  # Detener música al volver al menú principal
+                                self.stop_music()
                                 self.running = False
                                 return
                 self.draw_pause_menu()
@@ -372,11 +370,11 @@ class Game:
                 continue
 
             if self.game_over:
-                self.stop_music()  # Detener música en game over
+                self.stop_music()
                 self.game_active = False
                 self.draw_game_over()
                 if pygame.time.get_ticks() - self.game_over_time >= self.game_over_duration:
-                    self.stop_music()  # Asegurar que la música esté detenida
+                    self.stop_music()
                     return
                 continue
 
@@ -443,19 +441,19 @@ class Game:
         self.stop_music()
 
 if __name__ == "__main__":
-    pygame.init()  # Inicializar pygame antes del bucle principal
+    pygame.init()
     while True:
         try:
-            pygame.mixer.music.stop()  # Detener cualquier música residual
+            pygame.mixer.music.stop()
         except pygame.error:
-            pass  # Ignorar si el mezclador no está inicializado
+            pass
         game = Game()
         menu = Menu(game)
         if not menu.run(start_with_main_menu=True):
             try:
-                pygame.mixer.music.stop()  # Detener música al salir
+                pygame.mixer.music.stop()
             except pygame.error:
-                pass  # Ignorar si el mezclador no está inicializado
-            pygame.quit()  # Finalizar pygame al salir
+                pass
+            pygame.quit()
             break
         game.run()
