@@ -26,6 +26,9 @@ class Game:
         self.pause_selected_option = 0
         self.pause_options = ['Continuar', 'Reiniciar', 'Menú Principal']
         
+        # Selección de personaje
+        self.selected_character = "veronica"  
+        
         self.all_sprites = AllSprites()
         self.collision_sprites = pygame.sprite.Group()
         self.bullet_sprites = pygame.sprite.Group()
@@ -60,7 +63,7 @@ class Game:
         self.shoot_sound = pygame.mixer.Sound(join('audio', 'shoot.wav'))
         self.shoot_sound.set_volume(0.4)
         self.impact_sound = pygame.mixer.Sound(join('audio', 'impact.ogg'))
-        self.music = pygame.mixer.Sound(join('audio', 'music.wav'))
+        self.music = pygame.mixer.Sound(join('audio', 'principal.mp3'))
         self.music.set_volume(0.3)
         self.music.play(loops=-1)
         
@@ -214,7 +217,7 @@ class Game:
         player_pos = None
         for obj in map.get_layer_by_name('Entities'):
             if obj.name == 'Player':
-                self.player = Player((obj.x, obj.y), self.all_sprites, self.collision_sprites, self.drop_sprites)
+                self.player = Player((obj.x, obj.y), self.all_sprites, self.collision_sprites, self.drop_sprites, character=self.selected_character)
                 self.gun = Gun(self.player, self.all_sprites)
                 player_pos = (obj.x, obj.y)
             else:
