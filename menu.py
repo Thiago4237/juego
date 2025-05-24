@@ -33,7 +33,10 @@ class Menu:
                 
         self.splash_bg = pygame.image.load(join('Resources', 'img', 'PreMenu.png')).convert_alpha()
         self.splash_bg = pygame.transform.scale(self.splash_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
-        # Create a surface for the splash with per-pixel alpha
+        
+        self.help_bg = pygame.image.load(join('Resources', 'img', 'Ayuda.png')).convert_alpha()
+        self.help_bg = pygame.transform.scale(self.help_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
+        
         self.splash_surface = self.splash_bg.copy()
                 
         self.option_areas = [
@@ -79,23 +82,7 @@ class Menu:
         self.display_surface.blit(back_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT - 100))
 
     def draw_help(self):
-        self.display_surface.fill('black')
-        help_texts = [
-            "Objetivo del Juego:",
-            "Sobrevive en un entorno oscuro lleno de enemigos.",
-            "Recoge baterías para mantener tu linterna encendida.",
-            "Destruye enemigos para ganar puntos y sobrevivir.",
-            "",
-            "Controles:",
-            "WASD: Mover al explorador",
-            "Click izquierdo: Disparar",
-            "ESC: Pausar el juego",
-            "",
-            "Presiona ESC para volver"
-        ]
-        for i, text in enumerate(help_texts):
-            text_surf = self.font.render(text, True, (255, 255, 255))
-            self.display_surface.blit(text_surf, (WINDOW_WIDTH // 2 - 150, 50 + i * 40))
+        self.display_surface.blit(self.help_bg, (0, 0))
 
     def draw_name_input(self):
         self.display_surface.fill('black')
