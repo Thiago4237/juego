@@ -5,7 +5,7 @@ class Menu:
     def __init__(self, game):
         self.game = game
         self.display_surface = pygame.display.get_surface()
-        self.font = pygame.font.Font(None, 36)
+        self.font = pygame.font.Font(None, 36)  
         self.options = ['Jugar', 'Puntajes', 'Ayuda', 'Salir']
         self.selected_option = 0
         self.show_scores = False
@@ -18,18 +18,34 @@ class Menu:
                 
         self.char_selection_bg = pygame.image.load(join('Resources', 'img', 'Personaje.png')).convert_alpha()
         self.char_selection_bg = pygame.transform.scale(self.char_selection_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
+              
+        self.menu_bg = pygame.image.load(join('Resources', 'img', 'Menu.png')).convert_alpha()
+        self.menu_bg = pygame.transform.scale(self.menu_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
+                
+        self.option_areas = [
+            pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 170 - 25, 200, 40),  # Jugar
+            pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 55 - 25, 200, 40),   # Puntajes
+            pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 37, 200, 40),        # Ayuda
+            pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 178 - 25, 200, 40)    # Salir
+        ]
         
         self.char_areas = [
-            pygame.Rect(345, 150, 250, 450),  # veronica (left character)
+            pygame.Rect(350, 150, 250, 450),  # veronica (left character)
             pygame.Rect(700, 150, 250, 450)   # Santiago (right character)
         ]
 
     def draw_menu(self):
-        self.display_surface.fill('black')
-        for i, option in enumerate(self.options):
-            color = (255, 255, 0) if i == self.selected_option else (255, 255, 255)
-            text = self.font.render(option, True, color)
-            self.display_surface.blit(text, (WINDOW_WIDTH // 2 - 50, WINDOW_HEIGHT // 2 - 100 + i * 50))
+        self.display_surface.blit(self.menu_bg, (0, 0))
+        
+        # Modified: Draw a yellow triangle pointing left towards the option
+        selected_rect = self.option_areas[self.selected_option]
+        triangle_size = 15
+        triangle_points = [
+            (selected_rect.left - 30, selected_rect.centery),                    
+            (selected_rect.left - 45, selected_rect.centery - triangle_size),    
+            (selected_rect.left - 45, selected_rect.centery + triangle_size)     
+        ]
+        pygame.draw.polygon(self.display_surface, (255, 255, 0), triangle_points)
 
     def draw_scores(self):
         self.display_surface.fill('black')
@@ -109,9 +125,9 @@ class Menu:
                 pygame.quit()
                 return False
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
+                if event.key == pygame.K_LEFT or event.key == pygame.K_a:
                     self.selected_character = (self.selected_character - 1) % len(self.characters)
-                elif event.key == pygame.K_RIGHT:
+                elif event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                     self.selected_character = (self.selected_character + 1) % len(self.characters)
                 elif event.key == pygame.K_RETURN:
                     self.game.selected_character = self.characters[self.selected_character]
@@ -172,11 +188,12 @@ class Menu:
                         pygame.quit()
                         return False
                     if event.type == pygame.KEYDOWN:
-                        if event.key == pygame.K_UP:
+                        if event.key == pygame.K_UP or event.key == pygame.K_w:
                             self.selected_option = (self.selected_option - 1) % len(self.options)
-                        if event.key == pygame.K_DOWN:
+                        if event.key == pygame.K_DOWN or event.key == pygame.K_s:
                             self.selected_option = (self.selected_option + 1) % len(self.options)
                         if event.key == pygame.K_RETURN:
+                            # Logic to handle the selected option based on the image areas
                             if self.options[self.selected_option] == 'Jugar':
                                 self.input_name_active = True
                             elif self.options[self.selected_option] == 'Puntajes':
