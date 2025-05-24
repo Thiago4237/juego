@@ -13,7 +13,6 @@ import math
 
 class Game:
     def __init__(self):
-        pygame.init()
         self.display_surface = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         pygame.display.set_caption("Y ahora que...")
         self.clock = pygame.time.Clock()
@@ -26,8 +25,7 @@ class Game:
         self.pause_selected_option = 0
         self.pause_options = ['Continuar', 'Reiniciar', 'Menú Principal']
         
-        # Selección de personaje
-        self.selected_character = "veronica"  
+        self.selected_character = "veronica"
         
         self.all_sprites = AllSprites()
         self.collision_sprites = pygame.sprite.Group()
@@ -37,20 +35,19 @@ class Game:
         
         self.light_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.light_surface.fill((10, 10, 20))
-        self.light_surface.set_alpha(230)  # Opacidad de la capa negra (ajustable)
+        self.light_surface.set_alpha(230)
         
-        # Superficie para la niebla
         self.fog_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
-        self.fog_surface.fill((200, 200, 200))  # Gris claro para simular niebla
-        self.fog_base_alpha = 75  # Opacidad base (ajustable)
-        self.fog_alpha_variation = 25  # Variación de opacidad (ajustable)
-        self.fog_alpha_speed = 1.0  # Velocidad de la animación de opacidad
-        self.fog_offset = pygame.Vector2(0, 0)  # Desplazamiento de la niebla
-        self.fog_scroll_speed = pygame.Vector2(20, -10)  # Velocidad de desplazamiento
-        self.fog_active = True  # Estado inicial de la niebla
-        self.fog_active_duration = 5.0  # Duración activa (segundos)
-        self.fog_inactive_duration = 3.0  # Duración inactiva (segundos)
-        self.fog_timer = 0.0  # Temporizador para alternar estados
+        self.fog_surface.fill((200, 200, 200))
+        self.fog_base_alpha = 75
+        self.fog_alpha_variation = 25
+        self.fog_alpha_speed = 1.0
+        self.fog_offset = pygame.Vector2(0, 0)
+        self.fog_scroll_speed = pygame.Vector2(20, -10)
+        self.fog_active = True
+        self.fog_active_duration = 5.0
+        self.fog_inactive_duration = 3.0
+        self.fog_timer = 0.0
         
         self.can_shoot = True
         self.shoot_time = 0
@@ -60,12 +57,17 @@ class Game:
         pygame.time.set_timer(self.enemy_event, 500)
         self.spawn_positions = []
         
-        self.shoot_sound = pygame.mixer.Sound(join('audio', 'shoot.wav'))
-        self.shoot_sound.set_volume(0.2)
-        self.impact_sound = pygame.mixer.Sound(join('audio', 'impact.ogg'))
-        self.music = pygame.mixer.Sound(join('audio', 'principal.mp3'))
-        self.music.set_volume(1)
-        self.music.play(loops=-1)
+        try:
+            self.shoot_sound = pygame.mixer.Sound(join('audio', 'shoot.wav'))
+            self.shoot_sound.set_volume(0.2)
+            self.impact_sound = pygame.mixer.Sound(join('audio', 'impact.ogg'))
+            # Cargar música usando pygame.mixer.music
+            pygame.mixer.music.load(join('audio', 'principal.mp3'))
+            pygame.mixer.music.set_volume(1)
+        except pygame.error as e:
+            print(f"Error al cargar sonidos o música: {e}")
+            self.shoot_sound = None
+            self.impact_sound = None
         
         self.score = 0
         self.start_time = pygame.time.get_ticks()
@@ -83,6 +85,34 @@ class Game:
         
         self.load_images()
         
+    def play_music(self):
+        """Inicia o reinicia la música del juego."""
+        try:
+            pygame.mixer.music.play(loops=-1)
+        except pygame.error as e:
+            print(f"Error al reproducir música: {e}")
+
+    def stop_music(self):
+        """Detiene la música del juego."""
+        try:
+            pygame.mixer.music.stop()
+        except pygame.error as e:
+            print(f"Error al detener música: {e}")
+
+    def pause_music(self):
+        """Pausa la música del juego."""
+        try:
+            pygame.mixer.music.pause()
+        except pygame.error as e:
+            print(f"Error al pausar música: {e}")
+
+    def unpause_music(self):
+        """Reanuda la música del juego desde donde se pausó."""
+        try:
+            pygame.mixer.music.unpause()
+        except pygame.error as e:
+            print(f"Error al reanudar música: {e}")
+
     def load_images(self):
         self.bullet_surface = pygame.image.load(join('Resources', 'img', 'gun', 'bullet.png')).convert_alpha()
         folders = ['ghost', 'bat', 'skeleton']
@@ -130,7 +160,6 @@ class Game:
     def draw_score(self):
         score_text = self.font.render(f"Puntaje: {int(self.score)}", True, (255, 255, 255))
         self.display_surface.blit(score_text, (10, 70))
-        # Depuración: Mostrar número de enemigos activos y total
         total_enemies = sum(self.enemies_active.values())
         debug_text = self.font.render(
             f"Enemigos activos: G={self.enemies_active['ghost']} "
@@ -158,7 +187,8 @@ class Game:
 
     def input(self):
         if pygame.mouse.get_pressed()[0] and self.can_shoot:
-            self.shoot_sound.play()
+            if self.shoot_sound:
+                self.shoot_sound.play()
             position = self.gun.rect.center + self.gun.player_direction * 50
             Bullet(self.bullet_surface, position, self.gun.player_direction, (self.all_sprites, self.bullet_sprites))
             self.can_shoot = False
@@ -203,7 +233,9 @@ class Game:
         self.enemy_sprites.empty()
         self.drop_sprites.empty()
         
+        self.stop_music()  # Detener música antes de reiniciar
         self.setup()
+        self.play_music()  # Iniciar música después de configurar el juego
 
     def setup(self):
         current_dir = os.path.dirname(__file__)
@@ -233,7 +265,8 @@ class Game:
             for bullet in self.bullet_sprites:
                 collision_sprites = pygame.sprite.spritecollide(bullet, self.enemy_sprites, False, pygame.sprite.collide_mask)
                 if collision_sprites:
-                    self.impact_sound.play()
+                    if self.impact_sound:
+                        self.impact_sound.play()
                     for sprite in collision_sprites:
                         sprite.take_damage(10)
                     bullet.kill()
@@ -272,7 +305,6 @@ class Game:
                 self.enemies_active[enemy_type] += 1
 
     def update_fog(self, dt):
-        # Actualizar temporizador de niebla
         self.fog_timer += dt
         if self.fog_active:
             if self.fog_timer >= self.fog_active_duration:
@@ -282,20 +314,16 @@ class Game:
             if self.fog_timer >= self.fog_inactive_duration:
                 self.fog_active = True
                 self.fog_timer = 0.0
-        
-        # Actualizar desplazamiento de la niebla
         self.fog_offset += self.fog_scroll_speed * dt
         self.fog_offset.x %= WINDOW_WIDTH
         self.fog_offset.y %= WINDOW_HEIGHT
-        
-        # Actualizar opacidad
         if self.fog_active:
             fog_alpha = self.fog_base_alpha + self.fog_alpha_variation * math.sin(
                 pygame.time.get_ticks() / 1000.0 * self.fog_alpha_speed
             )
             self.fog_surface.set_alpha(int(fog_alpha))
         else:
-            self.fog_surface.set_alpha(0)  # Niebla invisible
+            self.fog_surface.set_alpha(0)
 
     def draw_fog(self):
         self.display_surface.blit(self.fog_surface, (self.fog_offset.x, self.fog_offset.y))
@@ -304,19 +332,23 @@ class Game:
         self.display_surface.blit(self.fog_surface, (self.fog_offset.x - WINDOW_WIDTH, self.fog_offset.y - WINDOW_HEIGHT))
 
     def run(self):
+        self.stop_music()  # Asegurar que la música esté detenida antes de iniciar
         self.reset_game()
         self.game_active = True
         while self.running:
             dt = self.clock.tick() / 1000
             
             if self.paused:
+                self.pause_music()  # Pausar música al entrar en pausa
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         self.running = False
+                        self.stop_music()
                     if event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_ESCAPE:
                             self.paused = False
                             self.game_active = True
+                            self.unpause_music()  # Reanudar música al continuar
                         elif event.key == pygame.K_UP:
                             self.pause_selected_option = (self.pause_selected_option - 1) % len(self.pause_options)
                         elif event.key == pygame.K_DOWN:
@@ -325,28 +357,33 @@ class Game:
                             if self.pause_options[self.pause_selected_option] == 'Continuar':
                                 self.paused = False
                                 self.game_active = True
+                                self.unpause_music()  # Reanudar música al continuar
                             elif self.pause_options[self.pause_selected_option] == 'Reiniciar':
                                 self.reset_game()
                                 self.game_active = True
+                                # Música manejada en reset_game
                             elif self.pause_options[self.pause_selected_option] == 'Menú Principal':
-                                self.save_scores()  # Guardar puntaje antes de terminar
-                                self.reset_game()   # Resetear el estado del juego
-                                self.running = False  # Terminar el bucle para volver al menú principal
+                                self.save_scores()
+                                self.stop_music()  # Detener música al volver al menú principal
+                                self.running = False
                                 return
                 self.draw_pause_menu()
                 pygame.display.update()
                 continue
 
             if self.game_over:
+                self.stop_music()  # Detener música en game over
                 self.game_active = False
                 self.draw_game_over()
                 if pygame.time.get_ticks() - self.game_over_time >= self.game_over_duration:
+                    self.stop_music()  # Asegurar que la música esté detenida
                     return
                 continue
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
+                    self.stop_music()
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE and self.game_active:
                         self.paused = True
@@ -403,12 +440,22 @@ class Game:
             self.draw_score()
             pygame.display.update()
             
-        pygame.quit()
+        self.stop_music()
 
 if __name__ == "__main__":
+    pygame.init()  # Inicializar pygame antes del bucle principal
     while True:
+        try:
+            pygame.mixer.music.stop()  # Detener cualquier música residual
+        except pygame.error:
+            pass  # Ignorar si el mezclador no está inicializado
         game = Game()
         menu = Menu(game)
         if not menu.run(start_with_main_menu=True):
+            try:
+                pygame.mixer.music.stop()  # Detener música al salir
+            except pygame.error:
+                pass  # Ignorar si el mezclador no está inicializado
+            pygame.quit()  # Finalizar pygame al salir
             break
         game.run()
