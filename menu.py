@@ -33,12 +33,16 @@ class Menu:
         
         self.char_selection_bg = pygame.image.load(join('Resources', 'img', 'Personaje.png')).convert_alpha()
         self.char_selection_bg = pygame.transform.scale(self.char_selection_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
+        
         self.menu_bg = pygame.image.load(join('Resources', 'img', 'Menu.png')).convert_alpha()
         self.menu_bg = pygame.transform.scale(self.menu_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
+        
         self.splash_bg = pygame.image.load(join('Resources', 'img', 'PreMenu.png')).convert_alpha()
         self.splash_bg = pygame.transform.scale(self.splash_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
+        
         self.help_bg = pygame.image.load(join('Resources', 'img', 'Ayuda.png')).convert_alpha()
         self.help_bg = pygame.transform.scale(self.help_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
+        
         self.splash_surface = self.splash_bg.copy()
         
         self.option_areas = [

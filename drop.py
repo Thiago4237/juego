@@ -12,8 +12,13 @@ class Drop(pygame.sprite.Sprite):
         """
         super().__init__(groups)
         self.drop_type = drop_type
-        self.image = pygame.Surface((40, 40))
-        self.image.fill((255, 0, 0) if drop_type == 'health' else (255, 255, 0))  # Rojo para salud, amarillo para batería
+        if drop_type == 'health':
+            self.image = pygame.image.load(join('Resources', 'img', 'drop', 'Health.png')).convert_alpha()
+        elif drop_type == 'battery':
+            self.image = pygame.image.load(join('Resources', 'img', 'drop', 'Battery.png')).convert_alpha()
+        
+        self.image = pygame.transform.scale(self.image, (60, 60))
+        
         self.rect = self.image.get_rect(center=pos)
     
     def update(self, *args):
