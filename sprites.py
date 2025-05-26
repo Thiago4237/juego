@@ -68,27 +68,29 @@ class Enemy(pygame.sprite.Sprite):
         self.game = game
         self.drop_sprites = drop_sprites
         
+        # Initialize enemy stats based on type
         if enemy_type == 'ghost':
             self.base_speed = 200
-            self.base_damage_percent = 0.05  # 10% de max_health
-            self.max_damage_percent = 0.35   # Máximo 40%
+            self.base_damage_percent = 0.02  # 2% of max_health
+            self.max_damage_percent = 0.20   # Max 20%
             self.max_health = 50
         elif enemy_type == 'bat':
             self.base_speed = 300
-            self.base_damage_percent = 0.03  # 5% de max_health
-            self.max_damage_percent = 0.38   # Máximo 45%
+            self.base_damage_percent = 0.01  # 1% of max_health
+            self.max_damage_percent = 0.15   # Max 15%
             self.max_health = 20
         elif enemy_type == 'skeleton':
             self.base_speed = 160
-            self.base_damage_percent = 0.10  # 20% de max_health
-            self.max_damage_percent = 0.42   # Máximo 50%
+            self.base_damage_percent = 0.05  # 5% of max_health
+            self.max_damage_percent = 0.25   # Max 25%
             self.max_health = 100
         
         self.speed = self.base_speed * (1 + 0.1 * game.difficulty_level)
-        damage_percent = self.base_damage_percent * (1 + 0.05 * game.difficulty_level)
+        damage_percent = self.base_damage_percent * (1 + 0.03 * game.difficulty_level)
         damage_percent = min(damage_percent, self.max_damage_percent)
         self.damage = damage_percent * player.max_health
-        self.health = self.max_health
+        
+        self.health = self.max_health  # Ensure health is initialized
         
         self.frames, self.frame_index = frames, 0
         self.image = self.frames[self.frame_index]
@@ -152,6 +154,8 @@ class Enemy(pygame.sprite.Sprite):
             self.kill()
     
     def draw_health_bar(self, surface, offset):
+        if not hasattr(self, 'health') or not hasattr(self, 'max_health'):
+            return  # Skip drawing if health attributes are missing
         bar_width = 50
         bar_height = 5
         bar_x = self.rect.centerx - bar_width // 2 + offset.x

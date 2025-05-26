@@ -24,13 +24,15 @@ class Player(pygame.sprite.Sprite):
         self.direction = pygame.Vector2()
         self.speed = 500
         self.collision_sprites = collision_sprites
-        self.drop_sprites = drop_sprites  # Grupo de sprites de drops
+        self.drop_sprites = drop_sprites
         self.light_radius = 150
         self.max_light_radius = 150
         self.light_duration = 30
         self.light_timer = self.light_duration
         self.max_health = 200
         self.health = self.max_health
+        self.invulnerability_timer = 0
+        self.invulnerability_duration = 500  # 0.5 segundos de inmunidad (en milisegundos)
     
     def load_images(self):
         self.frames = {'left': [], 'right': [], 'up': [], 'down': []}
@@ -100,17 +102,22 @@ class Player(pygame.sprite.Sprite):
                 self.light_timer = self.light_duration  # Recargar linterna al máximo
     
     def take_damage(self, damage):
-        self.health -= damage
-        if self.health < 0:
-            self.health = 0
+        if self.invulnerability_timer <= 0:  # Solo recibir daño si no está invulnerable
+            self.health -= damage
+            if self.health < 0:
+                self.health = 0
+            self.invulnerability_timer = self.invulnerability_duration  # Activar inmunidad
     
     def update(self, dt):
         self.input()
         self.move(dt)
         self.animate(dt)
         self.update_light(dt)
-        self.collect_drop()  # Verificar y recolectar drops
+        self.collect_drop()
         if self.light_radius == 0:
             self.speed = 250
         else:
             self.speed = 500
+        # Actualizar temporizador de inmunidad
+        if self.invulnerability_timer > 0:
+            self.invulnerability_timer -= dt * 1000  # Convertir dt a milisegundos

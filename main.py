@@ -434,7 +434,7 @@ class Game:
             pygame.draw.rect(self.display_surface, fill_color, (bar_x, bar_y, fill_width, bar_height))
             
             for sprite in self.enemy_sprites:
-                if hasattr(sprite, 'draw_health_bar') and sprite.death_time == 0:
+                if hasattr(sprite, 'draw_health_bar') and sprite.death_time == 0 and hasattr(sprite, 'health'):
                     sprite.draw_health_bar(self.display_surface, self.all_sprites.offset)
             
             self.draw_score()
