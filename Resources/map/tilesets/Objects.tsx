@@ -43,13 +43,4 @@
  <tile id="13">
   <image width="64" height="128" source="../graphics/objects/palm_small.png"/>
  </tile>
-<tile id="14">
-  <image width="64" height="128" source="../graphics/objects/tree_horror1.png"/>
- </tile>
-<tile id="15">
-  <image width="64" height="128" source="../graphics/objects/tree_horror2.png"/>
- </tile>
-<tile id="16">
-  <image width="64" height="128" source="../graphics/objects/tree_horror3.png"/>
- </tile>
 </tileset>

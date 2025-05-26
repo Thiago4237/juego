@@ -43,6 +43,9 @@ class Menu:
         self.help_bg = pygame.image.load(join('Resources', 'img', 'Ayuda.png')).convert_alpha()
         self.help_bg = pygame.transform.scale(self.help_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
         
+        self.scores_bg = pygame.image.load(join('Resources', 'img', 'Scores.png')).convert_alpha()
+        self.scores_bg = pygame.transform.scale(self.scores_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
+        
         self.splash_surface = self.splash_bg.copy()
         
         self.option_areas = [
@@ -86,16 +89,13 @@ class Menu:
         self.splash_surface.set_alpha(int(self.splash_alpha))
         self.display_surface.blit(self.splash_surface, (0, 0))
 
-    def draw_scores(self):
-        self.display_surface.fill('black')
-        title = self.font.render("Mejores Puntajes", True, (255, 255, 255))
-        self.display_surface.blit(title, (WINDOW_WIDTH // 2 - 100, 50))
+    def draw_scores(self):        
+        self.display_surface.blit(self.scores_bg, (0, 0))                
+
         for i, score in enumerate(self.game.high_scores):
             text = f"{score['name']}: {score['score']} ({score['date']})"
             score_text = self.font.render(text, True, (255, 255, 255))
-            self.display_surface.blit(score_text, (WINDOW_WIDTH // 2 - 100, 100 + i * 50))
-        back_text = self.font.render("Presiona ESC para volver", True, (255, 255, 255))
-        self.display_surface.blit(back_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT - 100))
+            self.display_surface.blit(score_text, (WINDOW_WIDTH // 2 - 200, 210 + i * 75))
 
     def draw_help(self):
         self.display_surface.blit(self.help_bg, (0, 0))
