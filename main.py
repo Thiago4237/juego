@@ -25,6 +25,11 @@ class Game:
         self.pause_selected_option = 0
         self.pause_options = ['Continuar', 'Reiniciar', 'Menú Principal']
         
+        # Variables para la cuenta regresiva al inicio
+        self.countdown_active = False
+        self.countdown_start_time = 0
+        self.countdown_duration = 2000  # 2 segundos en milisegundos
+        
         self.selected_character = "veronica"
         
         self.all_sprites = AllSprites()
@@ -79,6 +84,7 @@ class Game:
         self.score_file = join('Resources', 'scores.json')
         self.font = pygame.font.Font(None, 36)
         self.game_over_font = pygame.font.Font(None, 72)
+        self.countdown_font = pygame.font.Font(None, 120)  # Fuente para la cuenta regresiva
         self.high_scores = self.load_scores()
         self.player_name = ""
         
@@ -154,20 +160,22 @@ class Game:
                 json.dump(self.high_scores, f, indent=4)
 
     def update_score(self, dt, enemy_type=None):
-        self.score += 10 * dt
-        if enemy_type:
-            if enemy_type == 'ghost' and self.enemies_active['ghost'] > 0:
-                self.score += 50
-                self.enemies_defeated['ghost'] += 1
-                self.enemies_active['ghost'] -= 1
-            elif enemy_type == 'bat' and self.enemies_active['bat'] > 0:
-                self.score += 20
-                self.enemies_defeated['bat'] += 1
-                self.enemies_active['bat'] -= 1
-            elif enemy_type == 'skeleton' and self.enemies_active['skeleton'] > 0:
-                self.score += 100
-                self.enemies_defeated['skeleton'] += 1
-                self.enemies_active['skeleton'] -= 1
+        # Solo actualizar puntaje si no estamos en cuenta regresiva
+        if not self.countdown_active:
+            self.score += 10 * dt
+            if enemy_type:
+                if enemy_type == 'ghost' and self.enemies_active['ghost'] > 0:
+                    self.score += 50
+                    self.enemies_defeated['ghost'] += 1
+                    self.enemies_active['ghost'] -= 1
+                elif enemy_type == 'bat' and self.enemies_active['bat'] > 0:
+                    self.score += 20
+                    self.enemies_defeated['bat'] += 1
+                    self.enemies_active['bat'] -= 1
+                elif enemy_type == 'skeleton' and self.enemies_active['skeleton'] > 0:
+                    self.score += 100
+                    self.enemies_defeated['skeleton'] += 1
+                    self.enemies_active['skeleton'] -= 1
 
     def draw_score(self):
         score_text = self.font.render(f"Puntaje: {int(self.score)}", True, (255, 255, 255))
@@ -180,6 +188,34 @@ class Game:
             True, (255, 255, 255)
         )
         self.display_surface.blit(debug_text, (10, 100))
+
+    def draw_countdown(self):
+        """Dibuja la cuenta regresiva en pantalla."""
+        current_time = pygame.time.get_ticks()
+        elapsed_time = current_time - self.countdown_start_time
+        remaining_time = max(0, self.countdown_duration - elapsed_time)
+        
+        if remaining_time > 0:
+            # Calcular el número a mostrar (2, 1)
+            countdown_number = int((remaining_time / 1000) + 1)
+            countdown_text = f"¡El juego comienza en {countdown_number}!"
+            
+            # Crear el texto con sombra para mejor visibilidad
+            text_surface = self.countdown_font.render(countdown_text, True, (255, 255, 255))
+            shadow_surface = self.countdown_font.render(countdown_text, True, (0, 0, 0))
+            
+            # Centrar el texto en pantalla
+            text_rect = text_surface.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2))
+            shadow_rect = shadow_surface.get_rect(center=(WINDOW_WIDTH // 2 + 3, WINDOW_HEIGHT // 2 + 3))
+            
+            # Dibujar sombra primero, luego el texto
+            self.display_surface.blit(shadow_surface, shadow_rect)
+            self.display_surface.blit(text_surface, text_rect)
+            
+            return True  # Cuenta regresiva aún activa
+        else:
+            self.countdown_active = False
+            return False  # Cuenta regresiva terminada
 
     def draw_game_over(self):
         self.display_surface.blit(self.game_over_bg, (0, 0))
@@ -202,7 +238,8 @@ class Game:
         pygame.draw.polygon(self.display_surface, (255, 255, 0), triangle_points)
 
     def input(self):
-        if pygame.mouse.get_pressed()[0] and self.can_shoot:
+        # Solo permitir disparar si no estamos en cuenta regresiva
+        if pygame.mouse.get_pressed()[0] and self.can_shoot and not self.countdown_active:
             if self.shoot_sound:
                 self.shoot_sound.play()
             position = self.gun.rect.center + self.gun.player_direction * 50
@@ -217,10 +254,12 @@ class Game:
                 self.can_shoot = True
 
     def update_difficulty(self, dt):
-        self.difficulty_timer += dt
-        if self.difficulty_timer >= self.difficulty_interval:
-            self.difficulty_level += 1
-            self.difficulty_timer = 0
+        # Solo actualizar dificultad si no estamos en cuenta regresiva
+        if not self.countdown_active:
+            self.difficulty_timer += dt
+            if self.difficulty_timer >= self.difficulty_interval:
+                self.difficulty_level += 1
+                self.difficulty_timer = 0
 
     def get_drop_probability(self):
         base_probability = 0.7  # 70% inicial
@@ -242,6 +281,10 @@ class Game:
         self.fog_offset = pygame.Vector2(0, 0)
         self.fog_active = True
         self.fog_timer = 0.0
+        
+        # Resetear cuenta regresiva
+        self.countdown_active = False
+        self.countdown_start_time = 0
         
         self.all_sprites.empty()
         self.collision_sprites.empty()
@@ -296,6 +339,10 @@ class Game:
                     self.save_scores()
 
     def spawn_enemies(self, enemy_type, base_pos):
+        # Solo generar enemigos si no estamos en cuenta regresiva
+        if self.countdown_active:
+            return
+            
         if enemy_type == 'bat':
             num_bats = randint(2, 4)
             bats_to_spawn = min(num_bats, self.max_enemies_per_type - self.enemies_active['bat'])
@@ -348,6 +395,11 @@ class Game:
     def run(self):
         self.reset_game()
         self.game_active = True
+        
+        # Iniciar cuenta regresiva
+        self.countdown_active = True
+        self.countdown_start_time = pygame.time.get_ticks()
+        
         # Iniciar la música si no está reproduciéndose
         if not pygame.mixer.music.get_busy():
             self.play_music()
@@ -355,7 +407,7 @@ class Game:
             dt = self.clock.tick() / 1000
             
             if self.paused:
-                self.pause_music()
+                # self.pause_music()
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         self.running = False
@@ -377,6 +429,9 @@ class Game:
                             elif self.pause_options[self.pause_selected_option] == 'Reiniciar':
                                 self.reset_game()
                                 self.game_active = True
+                                # Reiniciar cuenta regresiva
+                                self.countdown_active = True
+                                self.countdown_start_time = pygame.time.get_ticks()
                                 # Reanudar la música si estaba pausada
                                 self.unpause_music()
                             elif self.pause_options[self.pause_selected_option] == 'Menú Principal':
@@ -405,7 +460,8 @@ class Game:
                     if event.key == pygame.K_ESCAPE and self.game_active:
                         self.paused = True
                         self.game_active = False
-                if event.type == self.enemy_event and self.game_active:
+                # Solo procesar eventos de enemigos si no estamos en cuenta regresiva
+                if event.type == self.enemy_event and self.game_active and not self.countdown_active:
                     enemy_type = choice(['ghost', 'bat', 'skeleton'])
                     self.spawn_enemies(enemy_type, choice(self.spawn_positions))
                     
@@ -455,6 +511,11 @@ class Game:
                     sprite.draw_health_bar(self.display_surface, self.all_sprites.offset)
             
             self.draw_score()
+            
+            # Dibujar cuenta regresiva si está activa
+            if self.countdown_active:
+                self.draw_countdown()
+            
             pygame.display.update()
             
         self.stop_music()
