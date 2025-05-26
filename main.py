@@ -232,9 +232,7 @@ class Game:
         self.enemy_sprites.empty()
         self.drop_sprites.empty()
         
-        self.stop_music()
         self.setup()
-        self.play_music()
 
     def setup(self):
         current_dir = os.path.dirname(__file__)
@@ -331,9 +329,13 @@ class Game:
         self.display_surface.blit(self.fog_surface, (self.fog_offset.x - WINDOW_WIDTH, self.fog_offset.y - WINDOW_HEIGHT))
 
     def run(self):
-        self.stop_music()
+        # self.stop_music()
         self.reset_game()
         self.game_active = True
+        
+        if not pygame.mixer.music.get_busy():
+            self.play_music()
+        
         while self.running:
             dt = self.clock.tick() / 1000
             
