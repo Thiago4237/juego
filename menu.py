@@ -153,7 +153,7 @@ class Menu:
                 elif event.key == pygame.K_RETURN:
                     self.game.selected_character = self.characters[self.selected_character]
                     self.character_selection_active = False
-                    self.stop_music()  # Detener música antes de iniciar el juego
+                    # self.stop_music()  # Detener música antes de iniciar el juego
                     return True
                 elif event.key == pygame.K_ESCAPE:
                     self.character_selection_active = False
