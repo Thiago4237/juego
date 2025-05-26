@@ -329,13 +329,11 @@ class Game:
         self.display_surface.blit(self.fog_surface, (self.fog_offset.x - WINDOW_WIDTH, self.fog_offset.y - WINDOW_HEIGHT))
 
     def run(self):
-        # self.stop_music()
         self.reset_game()
         self.game_active = True
-        
+        # Iniciar la música si no está reproduciéndose
         if not pygame.mixer.music.get_busy():
             self.play_music()
-        
         while self.running:
             dt = self.clock.tick() / 1000
             
@@ -362,6 +360,8 @@ class Game:
                             elif self.pause_options[self.pause_selected_option] == 'Reiniciar':
                                 self.reset_game()
                                 self.game_active = True
+                                # Reanudar la música si estaba pausada
+                                self.unpause_music()
                             elif self.pause_options[self.pause_selected_option] == 'Menú Principal':
                                 self.save_scores()
                                 self.stop_music()

@@ -2,7 +2,7 @@
 <map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="52" height="50" tilewidth="64" tileheight="64" infinite="0" nextlayerid="5" nextobjectid="220">
  <tileset firstgid="1" source="../tilesets/world_tileset.tsx"/>
  <tileset firstgid="211" source="../tilesets/Objects.tsx"/>
- <tileset firstgid="225" source="../../../../../Users/veron/Downloads/juegoPygame/juego/Resources/map/tilesets/world_tileset.tsx"/>
+ <tileset firstgid="225" source="../tilesets/world_tileset.tsx"/>
  <layer id="1" name="Ground" width="52" height="50">
   <data encoding="csv">
 42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,
