@@ -5,7 +5,8 @@ class Menu:
     def __init__(self, game):
         self.game = game
         self.display_surface = pygame.display.get_surface()
-        self.font = pygame.font.Font(None, 36)
+        self.font = pygame.font.Font(join('Resources', 'fonts', 'CrimsonText-Regular.ttf'), 36)  
+        self.name_font = pygame.font.Font(join('Resources', 'fonts', 'CrimsonText-Regular.ttf'), 48)  
         self.options = ['Jugar', 'Puntajes', 'Ayuda', 'Salir']
         self.selected_option = 0
         self.show_scores = False
@@ -39,6 +40,7 @@ class Menu:
         
         self.splash_bg = pygame.image.load(join('Resources', 'img', 'PreMenu.png')).convert_alpha()
         self.splash_bg = pygame.transform.scale(self.splash_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
+        self.splash_surface = self.splash_bg.copy()
         
         self.help_bg = pygame.image.load(join('Resources', 'img', 'Ayuda.png')).convert_alpha()
         self.help_bg = pygame.transform.scale(self.help_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -46,8 +48,9 @@ class Menu:
         self.scores_bg = pygame.image.load(join('Resources', 'img', 'Scores.png')).convert_alpha()
         self.scores_bg = pygame.transform.scale(self.scores_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
         
-        self.splash_surface = self.splash_bg.copy()
-        
+        self.name_input_bg = pygame.image.load(join('Resources', 'img', 'NameInput.png')).convert_alpha()
+        self.name_input_bg = pygame.transform.scale(self.name_input_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))        
+                
         self.option_areas = [
             pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 170 - 25, 200, 40),  # Jugar
             pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 55 - 25, 200, 40),   # Puntajes
@@ -55,8 +58,8 @@ class Menu:
             pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 178 - 25, 200, 40)   # Salir
         ]
         self.char_areas = [
-            pygame.Rect(350, 150, 250, 450),  # Veronica
-            pygame.Rect(700, 150, 250, 450)   # Santiago
+            pygame.Rect(350, 150, 250, 450),  # Personaje Veronica
+            pygame.Rect(700, 150, 250, 450)   # Personaje Santiago
         ]
 
     def play_music(self):
@@ -95,19 +98,15 @@ class Menu:
         for i, score in enumerate(self.game.high_scores):
             text = f"{score['name']}: {score['score']} ({score['date']})"
             score_text = self.font.render(text, True, (255, 255, 255))
-            self.display_surface.blit(score_text, (WINDOW_WIDTH // 2 - 200, 210 + i * 75))
+            self.display_surface.blit(score_text, (WINDOW_WIDTH // 2 - 210, 180 + i * 75))
 
     def draw_help(self):
         self.display_surface.blit(self.help_bg, (0, 0))
 
     def draw_name_input(self):
-        self.display_surface.fill('black')
-        prompt_text = self.font.render("Ingresa tu nombre:", True, (255, 255, 255))
-        name_text = self.font.render(self.player_name + ('.' if pygame.time.get_ticks() % 1000 < 500 else ''), True, (255, 255, 255))
-        self.display_surface.blit(prompt_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 50))
-        self.display_surface.blit(name_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2))
-        instruction_text = self.font.render("Presiona ENTER para continuar", True, (255, 255, 255))
-        self.display_surface.blit(instruction_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 50))
+        self.display_surface.blit(self.name_input_bg, (0, 0))        
+        name_text = self.name_font.render(self.player_name + ('.' if pygame.time.get_ticks() % 1000 < 500 else ''), True, (255, 255, 255))
+        self.display_surface.blit(name_text, (WINDOW_WIDTH // 2 + 75, WINDOW_HEIGHT // 2 - 32))
 
     def draw_character_selection(self):
         self.display_surface.blit(self.char_selection_bg, (0, 0))

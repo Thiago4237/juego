@@ -82,6 +82,19 @@ class Game:
         self.high_scores = self.load_scores()
         self.player_name = ""
         
+        self.game_over_bg = pygame.image.load(join('Resources', 'img', 'GameOver.png')).convert_alpha()
+        self.game_over_bg = pygame.transform.scale(self.game_over_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
+        
+        self.pause_bg = pygame.image.load(join('Resources', 'img', 'Pause.png')).convert_alpha()
+        self.pause_bg = pygame.transform.scale(self.pause_bg, (WINDOW_WIDTH, WINDOW_HEIGHT))
+        
+        # Definir áreas clicables para las opciones de pausa
+        self.pause_option_areas = [
+            pygame.Rect(WINDOW_WIDTH // 2 - 200, WINDOW_HEIGHT // 2 - 115, 200, 40),  # Continuar
+            pygame.Rect(WINDOW_WIDTH // 2 - 200, WINDOW_HEIGHT // 2 + 5, 200, 40),        # Reiniciar
+            pygame.Rect(WINDOW_WIDTH // 2 - 200, WINDOW_HEIGHT // 2 + 120, 200, 40)   # Menú Principal
+        ]
+        
         self.load_images()
         
     def play_music(self):
@@ -169,20 +182,24 @@ class Game:
         self.display_surface.blit(debug_text, (10, 100))
 
     def draw_game_over(self):
-        self.display_surface.fill('black')
-        score_text = self.game_over_font.render(f"Puntaje Final: {int(self.score)}", True, (255, 255, 255))
-        score_rect = score_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2))
+        self.display_surface.blit(self.game_over_bg, (0, 0))
+        score_text = self.game_over_font.render(f"{int(self.score)}", True, (255, 255, 255))
+        score_rect = score_text.get_rect(center=(WINDOW_WIDTH // 2 + 100, WINDOW_HEIGHT // 2 + 5))
         self.display_surface.blit(score_text, score_rect)
         pygame.display.update()
 
     def draw_pause_menu(self):
-        self.display_surface.fill('black')
-        title_text = self.font.render("Pausa", True, (255, 255, 255))
-        self.display_surface.blit(title_text, (WINDOW_WIDTH // 2 - 50, WINDOW_HEIGHT // 2 - 100))
-        for i, option in enumerate(self.pause_options):
-            color = (255, 255, 0) if i == self.pause_selected_option else (255, 255, 255)
-            text = self.font.render(option, True, color)
-            self.display_surface.blit(text, (WINDOW_WIDTH // 2 - 50, WINDOW_HEIGHT // 2 - 50 + i * 50))
+        # Dibujar la imagen de fondo del menú de pausa
+        self.display_surface.blit(self.pause_bg, (0, 0))
+        # Dibujar el triángulo amarillo para la opción seleccionada
+        selected_rect = self.pause_option_areas[self.pause_selected_option]
+        triangle_size = 15
+        triangle_points = [
+            (selected_rect.left - 30, selected_rect.centery),
+            (selected_rect.left - 45, selected_rect.centery - triangle_size),
+            (selected_rect.left - 45, selected_rect.centery + triangle_size)
+        ]
+        pygame.draw.polygon(self.display_surface, (255, 255, 0), triangle_points)
 
     def input(self):
         if pygame.mouse.get_pressed()[0] and self.can_shoot:
@@ -372,7 +389,7 @@ class Game:
                 continue
 
             if self.game_over:
-                self.stop_music()
+                # self.stop_music()
                 self.game_active = False
                 self.draw_game_over()
                 if pygame.time.get_ticks() - self.game_over_time >= self.game_over_duration:
