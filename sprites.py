@@ -144,7 +144,7 @@ class Enemy(pygame.sprite.Sprite):
         surface = pygame.mask.from_surface(self.frames[0]).to_surface()
         surface.set_colorkey('black')
         self.image = surface
-        print(f"{self.enemy_type.capitalize()} destruido, activos: {self.game.enemies_active[self.enemy_type]}")
+        # print(f"{self.enemy_type.capitalize()} destruido, activos: {self.game.enemies_active[self.enemy_type]}")
         drop_probability = self.game.get_drop_probability()
         if random.random() < drop_probability:
             drop_type = random.choices(['health', 'battery'], weights=[0.5, 0.5])[0]

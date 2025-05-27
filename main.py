@@ -148,7 +148,7 @@ class Game:
                     'name' in score and 'score' in score and 'date' in score and
                     isinstance(score['score'], (int, float))
                 ]
-                print(f"Puntajes cargados: {valid_scores}")
+                # print(f"Puntajes cargados: {valid_scores}")
                 return valid_scores
         except (FileNotFoundError, json.JSONDecodeError) as e:
             print(f"Error al cargar puntajes: {e}, inicializando lista vacía")
@@ -158,7 +158,7 @@ class Game:
         if self.player_name:
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             new_score = {'name': self.player_name, 'score': int(self.score), 'date': date}
-            print(f"Guardando nuevo puntaje: {new_score}")
+            # print(f"Guardando nuevo puntaje: {new_score}")
             high_scores = [dict(score) for score in self.high_scores]
             high_scores.append(new_score)
             high_scores = sorted(high_scores, key=lambda x: x['score'], reverse=True)
@@ -172,7 +172,7 @@ class Game:
                 if len(unique_scores) >= 5:
                     break
             self.high_scores = unique_scores
-            print(f"Puntajes después de guardar: {self.high_scores}")
+            # print(f"Puntajes después de guardar: {self.high_scores}")
             with open(self.score_file, 'w') as f:
                 json.dump(self.high_scores, f, indent=4)
                 
@@ -205,6 +205,29 @@ class Game:
         )
         self.display_surface.blit(debug_text, (10, 100))
 
+    def draw_countdown1(self):
+        current_time = pygame.time.get_ticks()
+        elapsed_time = current_time - self.countdown_start_time
+        remaining_time = max(0, self.countdown_duration - elapsed_time)
+        
+        if remaining_time > 0:
+            countdown_number = int((remaining_time / 1000) + 1)
+            countdown_text = f"¡El juego comienza en {countdown_number}!"
+            
+            text_surface = self.countdown_font.render(countdown_text, True, (255, 255, 255))
+            shadow_surface = self.countdown_font.render(countdown_text, True, (0, 0, 0))
+            
+            text_rect = text_surface.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2))
+            shadow_rect = shadow_surface.get_rect(center=(WINDOW_WIDTH // 2 + 3, WINDOW_HEIGHT // 2 + 3))
+            
+            self.display_surface.blit(shadow_surface, shadow_rect)
+            self.display_surface.blit(text_surface, text_rect)
+            
+            return True
+        else:
+            self.countdown_active = False
+            return False
+
     def draw_countdown(self):
         current_time = pygame.time.get_ticks()
         elapsed_time = current_time - self.countdown_start_time
@@ -226,6 +249,7 @@ class Game:
             return True
         else:
             self.countdown_active = False
+            self.player.countdown_active = False
             return False
 
     def draw_game_over(self):
@@ -322,9 +346,9 @@ class Game:
                 pos for pos in self.spawn_positions
                 if pygame.math.Vector2(pos).distance_to(pygame.math.Vector2(player_pos)) > 50
             ]
-        print(f"Posiciones de spawn: {self.spawn_positions}")
+        # print(f"Posiciones de spawn: {self.spawn_positions}")
         if not self.spawn_positions:
-            print("Advertencia: No hay posiciones de spawn, usando predeterminadas")
+            # print("Advertencia: No hay posiciones de spawn, usando predeterminadas")
             self.spawn_positions = [
                 (100, 100), (200, 200), (300, 100), (100, 300), (400, 200),
                 (WINDOW_WIDTH - 100, WINDOW_HEIGHT - 100), (WINDOW_WIDTH - 200, WINDOW_HEIGHT - 200)
@@ -354,13 +378,13 @@ class Game:
     def spawn_enemies(self, enemy_type, base_pos):
         if self.countdown_active:
             return
-        print(f"Intentando generar {enemy_type} en {base_pos}")
+        # print(f"Intentando generar {enemy_type} en {base_pos}")
         if self.enemies_active[enemy_type] < self.max_enemies_per_type:
             Enemy(base_pos, self.enemy_frames[enemy_type], 
                   (self.all_sprites, self.enemy_sprites), self.player, self.collision_sprites, 
                   enemy_type, self, self.drop_sprites)
             self.enemies_active[enemy_type] += 1
-            print(f"{enemy_type.capitalize()} generado, activos: {self.enemies_active[enemy_type]}")
+            # print(f"{enemy_type.capitalize()} generado, activos: {self.enemies_active[enemy_type]}")
         else:
             print(f"Límite alcanzado para {enemy_type}, no generado")
 
@@ -397,6 +421,8 @@ class Game:
         
         self.countdown_active = True
         self.countdown_start_time = pygame.time.get_ticks()
+        self.player.countdown_active = True
+        self.player.reset_flashlight()
         
         if not pygame.mixer.music.get_busy():
             self.play_music()
@@ -427,6 +453,8 @@ class Game:
                                 self.game_active = True
                                 self.countdown_active = True
                                 self.countdown_start_time = pygame.time.get_ticks()
+                                self.player.countdown_active = True
+                                self.player.reset_flashlight()
                                 self.unpause_music()
                             elif self.pause_options[self.pause_selected_option] == 'Menú Principal':
                                 self.save_scores()

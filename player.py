@@ -5,15 +5,6 @@ from settings import *
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, position, groups, collision_sprites, drop_sprites, character="veronica"):
-        """
-        Inicializa el jugador, carga imágenes, define atributos de movimiento, colisión y linterna.
-        Args:
-            position (tuple): Posición inicial del jugador.
-            groups (iterable): Grupos de sprites a los que pertenece.
-            collision_sprites (iterable): Sprites con los que puede colisionar.
-            drop_sprites (iterable): Sprites de drops que puede recolectar.
-            character (str): Nombre del personaje seleccionado ("veronica" o "santiago").
-        """
         super().__init__(groups)
         self.character = character
         self.load_images()
@@ -32,8 +23,9 @@ class Player(pygame.sprite.Sprite):
         self.max_health = 200
         self.health = self.max_health
         self.invulnerability_timer = 0
-        self.invulnerability_duration = 500  # 0.5 segundos de inmunidad (en milisegundos)
-    
+        self.invulnerability_duration = 500
+        self.countdown_active = False
+
     def load_images(self):
         self.frames = {'left': [], 'right': [], 'up': [], 'down': []}
         for state in self.frames.keys():
@@ -43,20 +35,20 @@ class Player(pygame.sprite.Sprite):
                         full_path = os.path.join(folder_path, file_name)
                         surf = pygame.image.load(full_path).convert_alpha()
                         self.frames[state].append(surf)
-    
+
     def input(self):
         keys = pygame.key.get_pressed()
         self.direction.x = int(keys[pygame.K_RIGHT] or keys[pygame.K_d]) - int(keys[pygame.K_LEFT] or keys[pygame.K_a])
         self.direction.y = int(keys[pygame.K_DOWN] or keys[pygame.K_s]) - int(keys[pygame.K_UP] or keys[pygame.K_w])
         self.direction = self.direction.normalize() if self.direction else self.direction
-    
+
     def move(self, dt):
         self.hitbox_rect.x += self.direction.x * self.speed * dt
         self.collision('horizontal')
         self.hitbox_rect.y += self.direction.y * self.speed * dt
         self.collision('vertical')
         self.rect.center = self.hitbox_rect.center
-    
+
     def collision(self, direction):
         for sprite in self.collision_sprites:
             if sprite.rect.colliderect(self.hitbox_rect):
@@ -66,7 +58,7 @@ class Player(pygame.sprite.Sprite):
                 else:
                     if self.direction.y > 0: self.hitbox_rect.bottom = sprite.rect.top
                     if self.direction.y < 0: self.hitbox_rect.top = sprite.rect.bottom
-    
+
     def animate(self, dt):
         if self.direction.x != 0:
             self.state = 'right' if self.direction.x > 0 else 'left'
@@ -74,8 +66,17 @@ class Player(pygame.sprite.Sprite):
             self.state = 'down' if self.direction.y > 0 else 'up'
         self.frame_index = self.frame_index + 5 * dt if self.direction else 0
         self.image = self.frames[self.state][int(self.frame_index) % len(self.frames[self.state])]
-    
+
+    def reset_flashlight(self):
+        self.light_timer = self.light_duration
+        self.light_charge = 100
+        self.light_radius = self.max_light_radius
+
     def update_light(self, dt):
+        if self.countdown_active:
+            self.light_charge = 100
+            self.light_radius = self.max_light_radius
+            return
         if self.light_timer > 0:
             self.light_timer -= dt
             base_radius = (self.light_timer / self.light_duration) * self.max_light_radius
@@ -90,24 +91,21 @@ class Player(pygame.sprite.Sprite):
         else:
             self.light_radius = 0
             self.light_charge = 0
-    
+
     def collect_drop(self):
-        """
-        Detecta colisión con drops y aplica sus efectos (salud o batería).
-        """
         for drop in pygame.sprite.spritecollide(self, self.drop_sprites, True):
             if drop.drop_type == 'health':
-                self.health = min(self.max_health, self.health + 0.2 * self.max_health)  # Restaurar 20% de salud
+                self.health = min(self.max_health, self.health + 0.2 * self.max_health)
             elif drop.drop_type == 'battery':
-                self.light_timer = self.light_duration  # Recargar linterna al máximo
-    
+                self.light_timer = self.light_duration
+
     def take_damage(self, damage):
-        if self.invulnerability_timer <= 0:  # Solo recibir daño si no está invulnerable
+        if self.invulnerability_timer <= 0:
             self.health -= damage
             if self.health < 0:
                 self.health = 0
-            self.invulnerability_timer = self.invulnerability_duration  # Activar inmunidad
-    
+            self.invulnerability_timer = self.invulnerability_duration
+
     def update(self, dt):
         self.input()
         self.move(dt)
@@ -118,6 +116,5 @@ class Player(pygame.sprite.Sprite):
             self.speed = 250
         else:
             self.speed = 500
-        # Actualizar temporizador de inmunidad
         if self.invulnerability_timer > 0:
-            self.invulnerability_timer -= dt * 1000  # Convertir dt a milisegundos
+            self.invulnerability_timer -= dt * 1000
