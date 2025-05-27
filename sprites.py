@@ -71,17 +71,17 @@ class Enemy(pygame.sprite.Sprite):
         # Initialize enemy stats based on type
         if enemy_type == 'ghost':
             self.base_speed = 200
-            self.base_damage_percent = 0.02  # 2% of max_health
+            self.base_damage_percent = 0.05  # 2% of max_health
             self.max_damage_percent = 0.20   # Max 20%
             self.max_health = 50
         elif enemy_type == 'bat':
             self.base_speed = 300
-            self.base_damage_percent = 0.01  # 1% of max_health
+            self.base_damage_percent = 0.03  # 1% of max_health
             self.max_damage_percent = 0.15   # Max 15%
             self.max_health = 20
         elif enemy_type == 'skeleton':
             self.base_speed = 160
-            self.base_damage_percent = 0.05  # 5% of max_health
+            self.base_damage_percent = 0.1  # 5% of max_health
             self.max_damage_percent = 0.25   # Max 25%
             self.max_health = 100
         
