@@ -21,7 +21,7 @@ class Gun(pygame.sprite.Sprite):
     def __init__(self, player, groups):
         self.player = player
         self.distance = 140
-        self.player_direction = pygame.Vector2(0, 1)  # Default direction (down)
+        self.player_direction = pygame.Vector2(0, 1)
         super().__init__(groups)
         self.gun_surface = pygame.image.load(join('Resources', 'img', 'gun', 'gun.png')).convert_alpha()
         self.image = self.gun_surface
@@ -31,9 +31,8 @@ class Gun(pygame.sprite.Sprite):
         mouse_pos = pygame.Vector2(pygame.mouse.get_pos())
         player_pos = pygame.Vector2(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
         direction_vector = mouse_pos - player_pos
-        if direction_vector.length() > 0:  # Only normalize if vector is non-zero
+        if direction_vector.length() > 0:
             self.player_direction = direction_vector.normalize()
-        # Else, keep the previous player_direction (default or last valid)
         
     def rotate_gun(self):
         angle = degrees(atan2(self.player_direction.x, self.player_direction.y)) - 90
@@ -71,21 +70,20 @@ class Enemy(pygame.sprite.Sprite):
         self.game = game
         self.drop_sprites = drop_sprites
         
-        # Initialize enemy stats based on type
         if enemy_type == 'ghost':
             self.base_speed = 200
-            self.base_damage_percent = 0.05  # 2% of max_health
-            self.max_damage_percent = 0.20   # Max 20%
+            self.base_damage_percent = 0.05
+            self.max_damage_percent = 0.20
             self.max_health = 50
         elif enemy_type == 'bat':
             self.base_speed = 300
-            self.base_damage_percent = 0.03  # 1% of max_health
-            self.max_damage_percent = 0.15   # Max 15%
+            self.base_damage_percent = 0.03
+            self.max_damage_percent = 0.15
             self.max_health = 20
         elif enemy_type == 'skeleton':
             self.base_speed = 160
-            self.base_damage_percent = 0.1  # 5% of max_health
-            self.max_damage_percent = 0.25   # Max 25%
+            self.base_damage_percent = 0.1
+            self.max_damage_percent = 0.25
             self.max_health = 100
         
         self.speed = self.base_speed * (1 + 0.1 * game.difficulty_level)
@@ -93,7 +91,7 @@ class Enemy(pygame.sprite.Sprite):
         damage_percent = min(damage_percent, self.max_damage_percent)
         self.damage = damage_percent * player.max_health
         
-        self.health = self.max_health  # Ensure health is initialized
+        self.health = self.max_health
         
         self.frames, self.frame_index = frames, 0
         self.image = self.frames[self.frame_index]
@@ -146,7 +144,7 @@ class Enemy(pygame.sprite.Sprite):
         surface = pygame.mask.from_surface(self.frames[0]).to_surface()
         surface.set_colorkey('black')
         self.image = surface
-        
+        print(f"{self.enemy_type.capitalize()} destruido, activos: {self.game.enemies_active[self.enemy_type]}")
         drop_probability = self.game.get_drop_probability()
         if random.random() < drop_probability:
             drop_type = random.choices(['health', 'battery'], weights=[0.5, 0.5])[0]
@@ -158,7 +156,7 @@ class Enemy(pygame.sprite.Sprite):
     
     def draw_health_bar(self, surface, offset):
         if not hasattr(self, 'health') or not hasattr(self, 'max_health'):
-            return  # Skip drawing if health attributes are missing
+            return
         bar_width = 50
         bar_height = 5
         bar_x = self.rect.centerx - bar_width // 2 + offset.x
