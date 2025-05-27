@@ -142,23 +142,49 @@ class Game:
                     full_path = join(folder_path, file_name)
                     surf = pygame.image.load(full_path).convert_alpha()
                     self.enemy_frames[folder].append(surf)
-    
+
     def load_scores(self):
         try:
             with open(self.score_file, 'r') as f:
-                return json.load(f)
-        except FileNotFoundError:
+                scores = json.load(f)
+                # Validar que cada entrada tenga los campos requeridos
+                valid_scores = [
+                    score for score in scores
+                    if isinstance(score, dict) and
+                    'name' in score and 'score' in score and 'date' in score and
+                    isinstance(score['score'], (int, float))
+                ]
+                # print(f"Puntajes cargados: {valid_scores}")  # Debug
+                return valid_scores
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"Error al cargar puntajes: {e}, inicializando lista vacía")  # Debug
             return []
 
     def save_scores(self):
         if self.player_name:
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             new_score = {'name': self.player_name, 'score': int(self.score), 'date': date}
-            self.high_scores.append(new_score)
-            self.high_scores = sorted(self.high_scores, key=lambda x: x['score'], reverse=True)[:5]
+            # print(f"Guardando nuevo puntaje: {new_score}")  # Debug
+            # Crear una copia profunda para evitar problemas de referencia
+            high_scores = [dict(score) for score in self.high_scores]  # Copia independiente
+            high_scores.append(new_score)
+            # Ordenar por puntaje descendente
+            high_scores = sorted(high_scores, key=lambda x: x['score'], reverse=True)
+            # Tomar los primeros 5, asegurando unicidad
+            unique_scores = []
+            seen_scores = set()
+            for score in high_scores:
+                score_tuple = (score['score'], score['name'], score['date'])
+                if score_tuple not in seen_scores:
+                    unique_scores.append(score)
+                    seen_scores.add(score_tuple)
+                if len(unique_scores) >= 5:
+                    break
+            self.high_scores = unique_scores
+            # print(f"Puntajes después de guardar: {self.high_scores}")  # Debug
             with open(self.score_file, 'w') as f:
                 json.dump(self.high_scores, f, indent=4)
-
+                
     def update_score(self, dt, enemy_type=None):
         # Solo actualizar puntaje si no estamos en cuenta regresiva
         if not self.countdown_active:

@@ -21,7 +21,7 @@ class Gun(pygame.sprite.Sprite):
     def __init__(self, player, groups):
         self.player = player
         self.distance = 140
-        self.player_direction = pygame.Vector2(0, 1)
+        self.player_direction = pygame.Vector2(0, 1)  # Default direction (down)
         super().__init__(groups)
         self.gun_surface = pygame.image.load(join('Resources', 'img', 'gun', 'gun.png')).convert_alpha()
         self.image = self.gun_surface
@@ -30,7 +30,10 @@ class Gun(pygame.sprite.Sprite):
     def get_direction(self):
         mouse_pos = pygame.Vector2(pygame.mouse.get_pos())
         player_pos = pygame.Vector2(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
-        self.player_direction = (mouse_pos - player_pos).normalize()
+        direction_vector = mouse_pos - player_pos
+        if direction_vector.length() > 0:  # Only normalize if vector is non-zero
+            self.player_direction = direction_vector.normalize()
+        # Else, keep the previous player_direction (default or last valid)
         
     def rotate_gun(self):
         angle = degrees(atan2(self.player_direction.x, self.player_direction.y)) - 90
