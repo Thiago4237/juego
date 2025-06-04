@@ -13,6 +13,67 @@ import math
 
 class Game:
     def __init__(self):
+        """
+        Inicializa los atributos necesarios para el funcionamiento del juego.
+        Atributos:
+            display_surface (pygame.Surface): Superficie de la ventana principal del juego.
+            clock (pygame.time.Clock): Reloj para controlar la velocidad de fotogramas.
+            running (bool): Indica si el juego está en ejecución.
+            game_over (bool): Indica si el juego ha terminado.
+            game_over_time (int): Tiempo en milisegundos desde que el juego terminó.
+            game_over_duration (int): Duración en milisegundos de la pantalla de "Game Over".
+            game_active (bool): Indica si el juego está activo.
+            paused (bool): Indica si el juego está pausado.
+            pause_selected_option (int): Opción seleccionada en el menú de pausa.
+            pause_options (list): Lista de opciones disponibles en el menú de pausa.
+            countdown_active (bool): Indica si la cuenta regresiva está activa.
+            countdown_start_time (int): Tiempo de inicio de la cuenta regresiva.
+            countdown_duration (int): Duración en milisegundos de la cuenta regresiva.
+            selected_character (str): Nombre del personaje seleccionado.
+            all_sprites (AllSprites): Grupo de todos los sprites del juego.
+            collision_sprites (pygame.sprite.Group): Grupo de sprites para detección de colisiones.
+            bullet_sprites (pygame.sprite.Group): Grupo de sprites de balas.
+            enemy_sprites (pygame.sprite.Group): Grupo de sprites de enemigos.
+            drop_sprites (pygame.sprite.Group): Grupo de sprites de objetos caídos.
+            light_surface (pygame.Surface): Superficie para efectos de iluminación.
+            fog_surface (pygame.Surface): Superficie para efectos de niebla.
+            fog_base_alpha (int): Nivel base de transparencia de la niebla.
+            fog_alpha_variation (int): Variación en la transparencia de la niebla.
+            fog_alpha_speed (float): Velocidad de cambio de transparencia de la niebla.
+            fog_offset (pygame.Vector2): Desplazamiento de la niebla.
+            fog_scroll_speed (pygame.Vector2): Velocidad de desplazamiento de la niebla.
+            fog_active (bool): Indica si la niebla está activa.
+            fog_active_duration (float): Duración en segundos de la niebla activa.
+            fog_inactive_duration (float): Duración en segundos de la niebla inactiva.
+            fog_timer (float): Temporizador para controlar la niebla.
+            can_shoot (bool): Indica si el jugador puede disparar.
+            shoot_time (int): Tiempo en milisegundos desde el último disparo.
+            gun_cooldown (int): Tiempo de espera en milisegundos entre disparos.
+            enemy_event (int): Tipo de evento personalizado para generar enemigos.
+            spawn_positions (list): Lista de posiciones de generación de enemigos.
+            shoot_sound (pygame.mixer.Sound): Sonido de disparo.
+            impact_sound (pygame.mixer.Sound): Sonido de impacto.
+            score (int): Puntuación del jugador.
+            start_time (int): Tiempo de inicio del juego en milisegundos.
+            difficulty_timer (int): Temporizador para aumentar la dificultad.
+            difficulty_interval (int): Intervalo en segundos para aumentar la dificultad.
+            difficulty_level (int): Nivel actual de dificultad.
+            enemies_defeated (dict): Diccionario con el número de enemigos derrotados por tipo.
+            enemies_active (dict): Diccionario con el número de enemigos activos por tipo.
+            max_enemies_per_type (int): Número máximo de enemigos por tipo.
+            score_file (str): Ruta del archivo de puntuaciones.
+            font (pygame.font.Font): Fuente para texto general.
+            game_over_font (pygame.font.Font): Fuente para texto de "Game Over".
+            countdown_font (pygame.font.Font): Fuente para texto de cuenta regresiva.
+            high_scores (dict): Diccionario con las puntuaciones más altas.
+            player_name (str): Nombre del jugador.
+            game_over_bg (pygame.Surface): Imagen de fondo para la pantalla de "Game Over".
+            pause_bg (pygame.Surface): Imagen de fondo para la pantalla de pausa.
+            pause_option_areas (list): Lista de áreas rectangulares para las opciones de pausa.
+        Excepciones:
+            pygame.error: Se lanza si ocurre un error al cargar sonidos o música.
+        """
+        
         self.display_surface = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         pygame.display.set_caption("Y ahora que...")
         self.clock = pygame.time.Clock()
@@ -103,30 +164,35 @@ class Game:
         self.load_images()
         
     def play_music(self):
+        # inicia el sonido
         try:
             pygame.mixer.music.play(loops=-1)
         except pygame.error as e:
             print(f"Error al reproducir música: {e}")
 
     def stop_music(self):
+        # detiene la musica
         try:
             pygame.mixer.music.stop()
         except pygame.error as e:
             print(f"Error al detener música: {e}")
 
     def pause_music(self):
+        # pausa la musica
         try:
             pygame.mixer.music.pause()
         except pygame.error as e:
             print(f"Error al pausar música: {e}")
 
     def unpause_music(self):
+        # continua la musica
         try:
             pygame.mixer.music.unpause()
         except pygame.error as e:
             print(f"Error al reanudar música: {e}")
 
     def load_images(self):
+        # carga las imagenes 
         self.bullet_surface = pygame.image.load(join('Resources', 'img', 'gun', 'bullet.png')).convert_alpha()
         folders = ['ghost', 'bat', 'skeleton']
         self.enemy_frames = {}
@@ -139,6 +205,7 @@ class Game:
                     self.enemy_frames[folder].append(surf)
 
     def load_scores(self):
+        # carga los puntajes desde el archivo 
         try:
             with open(self.score_file, 'r') as f:
                 scores = json.load(f)
@@ -155,6 +222,7 @@ class Game:
             return []
 
     def save_scores(self):
+        # guarda los puntajes en el archivo 
         if self.player_name:
             date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             new_score = {'name': self.player_name, 'score': int(self.score), 'date': date}
@@ -177,6 +245,7 @@ class Game:
                 json.dump(self.high_scores, f, indent=4)
                 
     def update_score(self, dt, enemy_type=None):
+        # actualiza el puntaje en el archivo 
         if not self.countdown_active:
             self.score += 10 * dt
             if enemy_type:
@@ -194,6 +263,7 @@ class Game:
                     self.enemies_active['skeleton'] -= 1
 
     def draw_score(self):
+        # imprime los puntajes y coloca el total de enemigos activos 
         score_text = self.font.render(f"Puntaje: {int(self.score)}", True, (255, 255, 255))
         self.display_surface.blit(score_text, (10, 70))
         total_enemies = sum(self.enemies_active.values())
@@ -205,30 +275,8 @@ class Game:
         )
         self.display_surface.blit(debug_text, (10, 100))
 
-    def draw_countdown1(self):
-        current_time = pygame.time.get_ticks()
-        elapsed_time = current_time - self.countdown_start_time
-        remaining_time = max(0, self.countdown_duration - elapsed_time)
-        
-        if remaining_time > 0:
-            countdown_number = int((remaining_time / 1000) + 1)
-            countdown_text = f"¡El juego comienza en {countdown_number}!"
-            
-            text_surface = self.countdown_font.render(countdown_text, True, (255, 255, 255))
-            shadow_surface = self.countdown_font.render(countdown_text, True, (0, 0, 0))
-            
-            text_rect = text_surface.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2))
-            shadow_rect = shadow_surface.get_rect(center=(WINDOW_WIDTH // 2 + 3, WINDOW_HEIGHT // 2 + 3))
-            
-            self.display_surface.blit(shadow_surface, shadow_rect)
-            self.display_surface.blit(text_surface, text_rect)
-            
-            return True
-        else:
-            self.countdown_active = False
-            return False
-
     def draw_countdown(self):
+        # este es el conteo regresivo para iniciar el juego
         current_time = pygame.time.get_ticks()
         elapsed_time = current_time - self.countdown_start_time
         remaining_time = max(0, self.countdown_duration - elapsed_time)
@@ -253,6 +301,7 @@ class Game:
             return False
 
     def draw_game_over(self):
+        # muestra el game over al finalizar el juego
         self.display_surface.blit(self.game_over_bg, (0, 0))
         score_text = self.game_over_font.render(f"{int(self.score)}", True, (255, 255, 255))
         score_rect = score_text.get_rect(center=(WINDOW_WIDTH // 2 + 100, WINDOW_HEIGHT // 2 + 5))
@@ -260,6 +309,7 @@ class Game:
         pygame.display.update()
 
     def draw_pause_menu(self):
+        # muestra el menu de pausa
         self.display_surface.blit(self.pause_bg, (0, 0))
         selected_rect = self.pause_option_areas[self.pause_selected_option]
         triangle_size = 15
@@ -280,12 +330,14 @@ class Game:
             self.shoot_time = pygame.time.get_ticks()
        
     def gun_timer(self):
+        # configuracion para los disparos
         if not self.can_shoot:
             current_time = pygame.time.get_ticks()
             if current_time - self.shoot_time >= self.gun_cooldown:
                 self.can_shoot = True
 
     def update_difficulty(self, dt):
+        #actualiza la difucultad
         if not self.countdown_active:
             self.difficulty_timer += dt
             if self.difficulty_timer >= self.difficulty_interval:
@@ -293,11 +345,13 @@ class Game:
                 self.difficulty_timer = 0
 
     def get_drop_probability(self):
+        # probabilidad de soltar algo al eliminar el enemigo
         base_probability = 0.7
         reduction = 0.05 * self.difficulty_level
         return max(0.1, base_probability - reduction)
 
     def reset_game(self):
+        #reinicio del juego
         self.score = 0
         self.start_time = pygame.time.get_ticks()
         self.difficulty_timer = 0
@@ -355,6 +409,7 @@ class Game:
             ]
 
     def bullet_collision(self):
+        # colicion de las balas
         if self.bullet_sprites:
             for bullet in self.bullet_sprites:
                 collision_sprites = pygame.sprite.spritecollide(bullet, self.enemy_sprites, False, pygame.sprite.collide_mask)
@@ -366,6 +421,7 @@ class Game:
                     bullet.kill()
 
     def player_collision(self):
+        #colicion del jugador
         collision_sprites = pygame.sprite.spritecollide(self.player, self.enemy_sprites, False, pygame.sprite.collide_mask)
         if collision_sprites:
             for sprite in collision_sprites:
@@ -376,6 +432,7 @@ class Game:
                     self.save_scores()
 
     def spawn_enemies(self, enemy_type, base_pos):
+        #aparicion de los enemigos
         if self.countdown_active:
             return
         # print(f"Intentando generar {enemy_type} en {base_pos}")
@@ -416,6 +473,7 @@ class Game:
         self.display_surface.blit(self.fog_surface, (self.fog_offset.x - WINDOW_WIDTH, self.fog_offset.y - WINDOW_HEIGHT))
 
     def run(self):
+        # corre el juego 
         self.reset_game()
         self.game_active = True
         
@@ -540,6 +598,7 @@ class Game:
         self.stop_music()
 
 if __name__ == "__main__":
+    # funcion principal 
     pygame.init()
     while True:
         try:
